@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(node scripts/test-grade-levels-api.js:*)",
+      "Bash(psql:*)",
+      "Bash(node scripts/run-fk-migration.js:*)",
+      "Bash(curl:*)",
+      "Bash(node scripts/run-activity-types-migration.js:*)",
+      "Bash(taskkill /F /PID 70948)",
+      "Bash(taskkill //F //PID 70948)",
+      "Bash(npm run dev:local:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 3252)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill //F //PID 1392)",
+      "Bash(node scripts/check-teacher-assignments.js:*)",
+      "Bash(node scripts/sync-teacher-assignments.js:*)",
+      "Bash(node:*)",
+      "Bash(taskkill //F //PID 24000)",
+      "Bash(timeout 30 node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(taskkill //F //PID 45604)",
+      "Bash(timeout 5 node:*)",
+      "Bash(test:*)",
+      "Bash(taskkill //F //PID 23000)",
+      "Bash(timeout 10 node:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

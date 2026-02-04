@@ -1,0 +1,220 @@
+@import "tailwindcss";
+@import "highlight.js/styles/github-dark.css";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Custom brand colors from new design */
+  --brand-purple: #735ff2;
+  --brand-yellow: #fceb4b;
+  --brand-orange: #ff7456;
+  --brand-green: #5cb563;
+  --brand-violet: #a356b6;
+  --brand-gray: #d9d9d9;
+  --brand-lightgray: #bebec0;
+  --brand-dark: #1e1e1e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-vazirmatn), system-ui, -apple-system, Segoe UI, Roboto,
+    Arial, "Vazirmatn", "Vazirmatn VF", "Noto Naskh Arabic", "Noto Sans Arabic",
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  /* Custom brand colors */
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-green: var(--brand-green);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-gray: var(--brand-gray);
+  --color-brand-lightgray: var(--brand-lightgray);
+  --color-brand-dark: var(--brand-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-vazirmatn), system-ui, -apple-system, Segoe UI, Roboto,
+    Arial, "Vazirmatn", "Vazirmatn VF", "Noto Naskh Arabic", "Noto Sans Arabic",
+    sans-serif;
+}
+
+/* Custom utility classes for brand colors */
+.bg-brand-purple {
+  background-color: var(--brand-purple);
+}
+
+.bg-brand-yellow {
+  background-color: var(--brand-yellow);
+}
+
+.bg-brand-orange {
+  background-color: var(--brand-orange);
+}
+
+.bg-brand-green {
+  background-color: var(--brand-green);
+}
+
+.bg-brand-violet {
+  background-color: var(--brand-violet);
+}
+
+.bg-brand-gray {
+  background-color: var(--brand-gray);
+}
+
+.text-brand-purple {
+  color: var(--brand-purple);
+}
+
+.text-brand-yellow {
+  color: var(--brand-yellow);
+}
+
+.text-brand-orange {
+  color: var(--brand-orange);
+}
+
+.text-brand-green {
+  color: var(--brand-green);
+}
+
+.text-brand-violet {
+  color: var(--brand-violet);
+}
+
+.text-brand-gray {
+  color: var(--brand-gray);
+}
+
+.text-brand-lightgray {
+  color: var(--brand-lightgray);
+}
+
+.text-brand-dark {
+  color: var(--brand-dark);
+}
+
+.border-3 {
+  border-width: 3px;
+}
+
+/* Utility class to replace inline styles for crisp image rendering */
+.image-crisp-edges {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+}
+
+/* Fix for mobile sidebar scrolling */
+@media (max-width: 1023px) {
+  .mobile-sidebar-scrollable {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-sidebar-overlay {
+    pointer-events: auto;
+  }
+}
+
+/* Markdown Styling for RTL (Persian) content */
+.prose {
+  direction: rtl;
+  text-align: right;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  line-height: 1.4;
+}
+
+.prose h1 { font-size: 1.75em; }
+.prose h2 { font-size: 1.5em; }
+.prose h3 { font-size: 1.25em; }
+.prose h4 { font-size: 1.125em; }
+
+.prose p {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+  line-height: 1.8;
+}
+
+.prose strong {
+  font-weight: 700;
+  color: inherit;
+}
+
+.prose ul, .prose ol {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+  padding-right: 1.5em;
+  padding-left: 0;
+}
+
+.prose li {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.6;
+}
+
+.prose ul li::marker {
+  color: inherit;
+}
+
+.prose ol li::marker {
+  color: inherit;
+  font-weight: 600;
+}
+
+.prose blockquote {
+  border-right: 4px solid currentColor;
+  border-left: none;
+  padding-right: 1em;
+  padding-left: 0;
+  margin: 1em 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.prose code {
+  background-color: rgba(127, 127, 127, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-size: 0.9em;
+  font-family: var(--font-mono);
+}
+
+.prose pre {
+  background-color: rgba(127, 127, 127, 0.1);
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Dark mode adjustments */
+.dark .prose code {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .prose pre {
+  background-color: rgba(255, 255, 255, 0.05);
+}

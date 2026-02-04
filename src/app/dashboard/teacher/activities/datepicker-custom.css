@@ -1,0 +1,39 @@
+/* Custom styles for react-multi-date-picker in dark mode */
+.rmdp-wrapper.bg-dark {
+  background-color: #1e293b !important;
+  color: white !important;
+  border: 1px solid #475569 !important;
+}
+
+.rmdp-wrapper.bg-dark .rmdp-header {
+  background-color: #334155 !important;
+  color: white !important;
+}
+
+.rmdp-wrapper.bg-dark .rmdp-week-day,
+.rmdp-wrapper.bg-dark .rmdp-day {
+  color: #cbd5e1 !important;
+}
+
+.rmdp-wrapper.bg-dark .rmdp-day.rmdp-today span {
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.rmdp-wrapper.bg-dark .rmdp-day.rmdp-selected span {
+  background-color: #2563eb !important;
+  color: white !important;
+}
+
+.rmdp-wrapper.bg-dark .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: #475569 !important;
+  color: white !important;
+}
+
+.rmdp-wrapper.bg-dark .rmdp-arrow {
+  border-color: #cbd5e1 !important;
+}
+
+.rmdp-wrapper.bg-dark .rmdp-arrow-container:hover {
+  background-color: #475569 !important;
+}
