@@ -26,8 +26,19 @@ npm start              # Start production server
 npm run lint           # Run ESLint on the project
 ```
 
-### Database Setup
-Database migrations are located in `database/migrations/`. The system uses PostgreSQL with connection pooling via the `pg` library. Database initialization and migrations should be run before first development session.
+### Database & Data Management
+Database migrations are located in `database/migrations/`. The system uses PostgreSQL with connection pooling via the `pg` library.
+
+Useful database and sync scripts:
+```bash
+node scripts/check-teacher-assignments.js       # Verify teacher-class-subject assignments
+node scripts/sync-teacher-assignments.js        # Sync assignments after schema changes
+node scripts/sync-subjects-to-lessons.js        # Migrate subjects to lessons table
+node scripts/seed-iran-curriculum-lessons.js    # Seed Iranian national curriculum lessons
+node scripts/check-activities-subject-ids.js    # Verify activity subject references
+```
+
+Initialize database migrations before first development session.
 
 ## Architecture Overview
 
@@ -60,11 +71,17 @@ src/
 │   │   ├── parent/                # Parent endpoints
 │   │   ├── admin/                 # Admin endpoints
 │   │   ├── ai-chat/               # Shared AI chat service
-│   │   └── ai/                    # AI service endpoints
+│   │   ├── ai/                    # AI service endpoints
+│   │   └── webhook/
+│   │       ├── bale/              # Bale messenger bot webhook
+│   │       └── telegram/          # Telegram messenger bot webhook
 │   ├── components/
 │   │   ├── AIChat/                # AI Chat system with hooks and types
 │   │   └── reports/               # Report generation components
 │   └── layout.tsx                 # Root layout with theme provider
+├── types/
+│   ├── bale.ts                    # Bale messenger bot API types
+│   └── telegram.ts                # Telegram messenger bot API types
 └── lib/
     ├── database.ts                # PostgreSQL connection pool & TypeScript types
     ├── auth.ts                    # Authentication logic (signin, OTP, password reset)
@@ -74,6 +91,10 @@ src/
     ├── fileUpload.ts              # AWS S3 file upload
     ├── exportUtils.ts             # Excel/CSV export utilities
     ├── reports.ts                 # Report generation logic
+    ├── baleService.ts             # Bale messenger bot API client
+    ├── baleMessageHandler.ts      # Bale messenger message processing logic
+    ├── telegramService.ts         # Telegram messenger bot API client
+    ├── telegramMessageHandler.ts  # Telegram messenger message processing logic
     └── utils.ts                   # Shared helper functions
 ```
 
@@ -122,6 +143,24 @@ src/
 | `student` | Own profile | Own enrollments/grades |
 | `parent` | Child profile | Children's data only |
 
+### Critical Schema Notes
+⚠️ **Deprecated Table**: The `subjects` table is **deprecated**. All references now use the `lessons` table:
+- Foreign keys like `subject_id` now point to `lessons.id` (despite the field name)
+- Use `lessons.title` instead of `subjects.name`
+- Migration documented in docs/SUBJECTS_TO_LESSONS_MIGRATION.md
+- Use provided sync scripts if working with legacy data
+
+**Text Normalization for Persian**: When comparing Persian text in database queries, always normalize:
+```sql
+regexp_replace(translate(COALESCE(l.title, ''), 'يك', 'یک'), '\s+', ' ', 'g')
+```
+
+**Messenger Bot Indexes**: The JSONB `profile` field has GIN indexes for fast user lookups:
+- `idx_users_profile_bale_chat_id` - Index on `profile->'bale_chat_id'` for Bale bot webhook
+- `idx_users_profile_telegram_chat_id` - Index on `profile->'telegram_chat_id'` for Telegram bot webhook
+- These provide O(log n) performance for user identification in messenger integrations
+- Created in migration: `database/migrations/add_bale_chat_id_index.sql`
+
 ## Key Patterns & Conventions
 
 ### API Response Pattern
@@ -147,6 +186,66 @@ All API responses follow this structure:
 - **Streaming Responses**: ReadableStream for real-time responses via `/api/ai-chat`
 - **Role-Based Prompts**: Different system prompts for each user role (`lib/aiPrompts.ts`)
 - **Fallback Handling**: Graceful degradation with error messages
+- **LangChain Usage**: Note that `.stream()` method only accepts message array, not options parameter
+
+### Messenger Bot Integration (Bale & Telegram)
+The system supports AI-powered messaging through Bale and Telegram messengers:
+
+**Bale Bot** (`docs/BALE_BOT_INTEGRATION.md`):
+- **Files**: `src/types/bale.ts`, `src/lib/baleService.ts`, `src/lib/baleMessageHandler.ts`, `src/app/api/webhook/bale/route.ts`
+- **Base URL**: `https://tapi.bale.ai/bot`
+- **Profile Fields**: `bale_chat_id`, `bale_api_key`, `bale_bot_id`
+- **Webhook**: `POST /api/webhook/bale` - Receives messages from Bale servers
+- **Status**: ✅ Production-ready (February 10, 2026)
+
+**Telegram Bot** (`docs/TELEGRAM_BOT_INTEGRATION.md`):
+- **Files**: `src/types/telegram.ts`, `src/lib/telegramService.ts`, `src/lib/telegramMessageHandler.ts`, `src/app/api/webhook/telegram/route.ts`
+- **Base URL**: `https://api.telegram.org/bot`
+- **Profile Fields**: `telegram_chat_id`, `telegram_api_key`, `telegram_bot_id`
+- **Webhook**: `POST /api/webhook/telegram` - Receives messages from Telegram servers
+- **Status**: ✅ Production-ready (February 10, 2026)
+
+**Shared Architecture**:
+- Both use identical message flow (8-step process)
+- Both reuse 100% of existing AI infrastructure (`sendChatToOpenAIStream`)
+- Both apply role-based prompts automatically (principal/teacher/student/parent)
+- Both support message splitting for responses >4096 chars
+- Both have GIN indexes on JSONB chat_id fields for O(log n) performance
+- Both enforce multi-tenant isolation via `school_id`
+- Database schema supports both simultaneously
+
+**Message Flow**:
+1. User sends message in messenger → 2. Webhook POST to `/api/webhook/{bale|telegram}` → 3. Identify user by chat_id → 4. Get bot token from principal's profile → 5. Send typing indicator → 6. Process with `sendChatToOpenAIStream()` → 7. Split response if needed → 8. Send back to messenger → 9. Always return 200 OK
+
+**Key Differences**:
+| Aspect | Bale | Telegram |
+|--------|------|----------|
+| **API Base** | `tapi.bale.ai` | `api.telegram.org` |
+| **Fields** | `bale_*` | `telegram_*` |
+| **Deployment** | 60 minutes (ground-up) | 20 minutes (reused DB/UI) |
+| **Status** | First messenger bot | Second (identical pattern) |
+
+**Deployment Checklist**:
+- Principal enters bot credentials in Settings → Profile
+- Register webhook URL with messenger API (one-time per school)
+- Users send first message to establish chat_id (auto-stored)
+- Monitor logs for `[Bale Webhook]` or `[Telegram Webhook]` messages
+- Verify response time <5 seconds per message
+
+**For Future Messengers** (WhatsApp, Signal, etc.):
+Copy the pattern: Create service + handler + webhook route, use existing AI infrastructure.
+
+### Principal AI Assistant - Anti-Hallucination Patterns
+The Principal Assistant uses strict prompts to prevent AI hallucination:
+1. **Function Call Examples**: Always provide explicit Persian examples:
+   ```
+   "وضعیت علی احمدی در ریاضی" → student_name: "علی احمدی", subject_name: "ریاضی"
+   ```
+2. **Prompt Structure**: Use clear sections with **DATABASE FACTS**, **EXACT DATA - DO NOT MODIFY**, and **Anti-Hallucination Rules**
+3. **Validation Functions**: Check student enrollment, validate subject references, confirm class membership before using AI
+4. **Location**: `src/app/api/principal/ai-assistant/route.ts` and `src/lib/principalAssistantStudentData.ts`
+
+Learn more: docs/PRINCIPAL_ASSISTANT_IMPROVEMENTS.md
 
 ### Chat Component System
 Located in `src/app/components/AIChat/`:
@@ -213,6 +312,15 @@ Located in `src/app/components/AIChat/`:
 - Activities can use AI grading via `aiService.gradeActivityWithAI()`
 - Activities are stored school-wide but assigned to classes
 
+### Bulk Activities Management
+The system supports importing/exporting activities in bulk via Excel:
+- **Import/Export**: CSV/Excel files with validation
+- **Generation**: Create activity templates filtered by grade, class, subject
+- **Validation**: Complete data validation (students, teachers, classes, subjects)
+- **Error Reporting**: Comprehensive error logs with line numbers and issues
+- **Operations**: Support both insert and update modes
+- Learn more: docs/BULK_ACTIVITIES_GUIDE.md
+
 ## Important Configuration Files
 
 - `.env` - Environment variables (API keys, DB connection string, email config)
@@ -264,10 +372,47 @@ Located in `src/app/components/AIChat/`:
 ## Documentation
 
 Comprehensive documentation is available in `/docs/`:
-- `DATABASE_STRUCTURE.md` - Full schema documentation
-- `AUTHENTICATION.md` - Auth system details
+- `DATABASE_STRUCTURE.md` - Full schema documentation with bulk activities section
+- `AUTHENTICATION.md` - Auth system details and login methods
 - `CLASS_MANAGEMENT.md` - Class and academic structure
 - `EDUCATIONAL_ACTIVITIES.md` - Activity types and workflows
-- And 25+ other detailed guides
+- `BULK_ACTIVITIES_GUIDE.md` - Import/export and bulk management of activities
+- `PRINCIPAL_ASSISTANT_IMPROVEMENTS.md` - AI anti-hallucination patterns
+- `BALE_BOT_INTEGRATION.md` - Bale messenger bot setup and troubleshooting ⭐ **New**
+- `TELEGRAM_BOT_INTEGRATION.md` - Telegram messenger bot setup and troubleshooting ⭐ **New**
+- `SUBJECTS_TO_LESSONS_MIGRATION.md` - Schema migration documentation
+- And 20+ other detailed guides in Persian and English
 
-Refer to these documents for specific domain knowledge before making changes.
+Also available in root directory:
+- `BALE_DEPLOYMENT_CHECKLIST.md` - 5-minute Bale bot deployment guide
+- `BALE_IMPLEMENTATION_SUMMARY.md` - Bale bot implementation overview
+- `TELEGRAM_DEPLOYMENT_CHECKLIST.md` - 5-minute Telegram bot deployment guide
+- `TELEGRAM_IMPLEMENTATION_SUMMARY.md` - Telegram bot implementation overview
+
+Refer to these documents for specific domain knowledge before making changes. Pay special attention to the **bolded** documents for recent feature implementations (messenger bots).
+
+## Common Pitfalls & Solutions
+
+### SQL Query Errors with SELECT DISTINCT
+**Problem**: `for SELECT DISTINCT, ORDER BY expressions must appear in select list`
+
+**Solution**: When using `SELECT DISTINCT`, all columns in `ORDER BY` must be in the SELECT list:
+```sql
+-- ❌ Wrong
+SELECT DISTINCT title ORDER BY LENGTH(title) DESC
+
+-- ✅ Correct
+SELECT DISTINCT title, LENGTH(title) AS title_length ORDER BY title_length DESC
+```
+
+### LangChain Streaming with Timeout
+**Problem**: "Internal Server Error" when calling `.stream()` with `signal` parameter
+
+**Solution**: LangChain's `.stream()` only accepts message array, not options:
+```typescript
+// ❌ Wrong
+await model.stream([messages], { signal: abortController.signal })
+
+// ✅ Correct - Handle timeout separately with setTimeout
+await model.stream([messages])
+```
