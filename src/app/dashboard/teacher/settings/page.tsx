@@ -7,6 +7,7 @@ import {
   Mail,
   Phone,
   IdCard,
+  MessageCircle,
   Save,
   AlertCircle,
   Edit,
@@ -24,6 +25,8 @@ interface User {
   profile_picture_url?: string;
   profile?: {
     language_model?: "cloud" | "local";
+    telegram_chat_id?: string;
+    bale_chat_id?: string;
   };
   created_at: Date;
 }
@@ -38,6 +41,8 @@ export default function TeacherSettingsPage() {
     email: "",
     phone: "",
     national_id: "",
+    telegram_chat_id: "",
+    bale_chat_id: "",
   });
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<
@@ -85,6 +90,8 @@ export default function TeacherSettingsPage() {
           email: data.user.email || "",
           phone: data.user.phone || "",
           national_id: data.user.national_id || "",
+          telegram_chat_id: data.user.profile?.telegram_chat_id || "",
+          bale_chat_id: data.user.profile?.bale_chat_id || "",
         });
         setLanguageModel(
           data.user.profile?.language_model === "local" ? "local" : "cloud"
@@ -142,6 +149,8 @@ export default function TeacherSettingsPage() {
       formDataToSend.append("email", formData.email);
       formDataToSend.append("phone", formData.phone);
       formDataToSend.append("national_id", formData.national_id);
+      formDataToSend.append("telegram_chat_id", formData.telegram_chat_id);
+      formDataToSend.append("bale_chat_id", formData.bale_chat_id);
 
       if (profilePicture) {
         formDataToSend.append("profile_picture", profilePicture);
@@ -164,6 +173,11 @@ export default function TeacherSettingsPage() {
           phone: formData.phone,
           national_id: formData.national_id,
           profile_picture_url: result.user.profile_picture_url,
+          profile: {
+            ...user?.profile,
+            telegram_chat_id: formData.telegram_chat_id,
+            bale_chat_id: formData.bale_chat_id,
+          },
         });
 
         // Update existing profile picture if a new picture was uploaded
@@ -551,6 +565,72 @@ export default function TeacherSettingsPage() {
                 >
                   کد ملی خود را وارد کنید
                 </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="telegram_chat_id"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی تلگرام
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="telegram_chat_id"
+                    name="telegram_chat_id"
+                    value={formData.telegram_chat_id}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="@your_telegram_id"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="bale_chat_id"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی بله
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="bale_chat_id"
+                    name="bale_chat_id"
+                    value={formData.bale_chat_id}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="@your_bale_id"
+                  />
+                </div>
               </div>
             </div>
 

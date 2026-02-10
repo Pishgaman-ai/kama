@@ -7,6 +7,7 @@ import {
   Mail,
   Phone,
   IdCard,
+  MessageCircle,
   Save,
   AlertCircle,
   Edit,
@@ -25,6 +26,12 @@ interface User {
   profile_picture_url?: string;
   profile?: {
     language_model?: "cloud" | "local";
+    telegram_chat_id?: string;
+    bale_chat_id?: string;
+    telegram_api_key?: string;
+    bale_api_key?: string;
+    telegram_bot_id?: string;
+    bale_bot_id?: string;
   };
   created_at: Date;
 }
@@ -39,6 +46,12 @@ export default function PrincipalSettingsPage() {
     email: "",
     phone: "",
     national_id: "",
+    telegram_chat_id: "",
+    bale_chat_id: "",
+    telegram_api_key: "",
+    bale_api_key: "",
+    telegram_bot_id: "",
+    bale_bot_id: "",
   });
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<
@@ -89,6 +102,12 @@ export default function PrincipalSettingsPage() {
           email: data.user.email || "",
           phone: data.user.phone || "",
           national_id: data.user.national_id || "",
+          telegram_chat_id: data.user.profile?.telegram_chat_id || "",
+          bale_chat_id: data.user.profile?.bale_chat_id || "",
+          telegram_api_key: data.user.profile?.telegram_api_key || "",
+          bale_api_key: data.user.profile?.bale_api_key || "",
+          telegram_bot_id: data.user.profile?.telegram_bot_id || "",
+          bale_bot_id: data.user.profile?.bale_bot_id || "",
         });
         setLanguageModel(
           data.user.profile?.language_model === "local" ? "local" : "cloud"
@@ -145,6 +164,12 @@ export default function PrincipalSettingsPage() {
       formDataToSend.append("email", formData.email);
       formDataToSend.append("phone", formData.phone);
       formDataToSend.append("national_id", formData.national_id);
+      formDataToSend.append("telegram_chat_id", formData.telegram_chat_id);
+      formDataToSend.append("bale_chat_id", formData.bale_chat_id);
+      formDataToSend.append("telegram_api_key", formData.telegram_api_key);
+      formDataToSend.append("bale_api_key", formData.bale_api_key);
+      formDataToSend.append("telegram_bot_id", formData.telegram_bot_id);
+      formDataToSend.append("bale_bot_id", formData.bale_bot_id);
 
       if (profilePicture) {
         formDataToSend.append("profile_picture", profilePicture);
@@ -167,6 +192,15 @@ export default function PrincipalSettingsPage() {
           phone: formData.phone,
           national_id: formData.national_id,
           profile_picture_url: result.user.profile_picture_url,
+          profile: {
+            ...user?.profile,
+            telegram_chat_id: formData.telegram_chat_id,
+            bale_chat_id: formData.bale_chat_id,
+            telegram_api_key: formData.telegram_api_key,
+            bale_api_key: formData.bale_api_key,
+            telegram_bot_id: formData.telegram_bot_id,
+            bale_bot_id: formData.bale_bot_id,
+          },
         });
 
         // Update existing profile picture if a new one was uploaded
@@ -563,6 +597,204 @@ export default function PrincipalSettingsPage() {
                 >
                   کد ملی خود را وارد کنید
                 </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="telegram_chat_id"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی تلگرام
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="telegram_chat_id"
+                    name="telegram_chat_id"
+                    value={formData.telegram_chat_id}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="@your_telegram_id"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="bale_chat_id"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی بله
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="bale_chat_id"
+                    name="bale_chat_id"
+                    value={formData.bale_chat_id}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="@your_bale_id"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="telegram_api_key"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  کلید API تلگرام (برای همه کاربران مدرسه)
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="telegram_api_key"
+                    name="telegram_api_key"
+                    value={formData.telegram_api_key}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="Telegram API Key"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="bale_api_key"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  کلید API بله (برای همه کاربران مدرسه)
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="bale_api_key"
+                    name="bale_api_key"
+                    value={formData.bale_api_key}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="Bale API Key"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="telegram_bot_id"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  آیدی بات تلگرام
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="telegram_bot_id"
+                    name="telegram_bot_id"
+                    value={formData.telegram_bot_id}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="@my_telegram_bot"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="bale_bot_id"
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  آیدی بات بله
+                </label>
+                <div className="relative">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <MessageCircle
+                      className={`w-5 h-5 ${
+                        theme === "dark" ? "text-slate-400" : "text-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    id="bale_bot_id"
+                    name="bale_bot_id"
+                    value={formData.bale_bot_id}
+                    onChange={handleInputChange}
+                    className={`w-full pr-10 pl-4 py-3 rounded-xl border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                    }`}
+                    placeholder="@my_bale_bot"
+                  />
+                </div>
               </div>
             </div>
 

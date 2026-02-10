@@ -15,6 +15,7 @@ import {
   Calendar,
   Users,
   Crown,
+  MessageCircle,
 } from "lucide-react";
 import { useTheme } from "@/app/components/ThemeContext";
 
@@ -26,7 +27,11 @@ interface Principal {
   email?: string;
   role: string;
   is_active: boolean;
-  profile?: Record<string, unknown>;
+  profile?: {
+    telegram_chat_id?: string;
+    bale_chat_id?: string;
+    [key: string]: unknown;
+  };
   profile_picture_url?: string;
   created_at: string;
   updated_at: string;
@@ -42,6 +47,8 @@ interface PrincipalFormData {
   phone: string;
   email?: string;
   password?: string;
+  telegram_chat_id?: string;
+  bale_chat_id?: string;
   is_active: boolean;
   profile_picture?: File | null;
 }
@@ -71,6 +78,8 @@ export default function SchoolPrincipalsPage() {
     phone: "",
     email: "",
     password: "",
+    telegram_chat_id: "",
+    bale_chat_id: "",
     is_active: true,
     profile_picture: null,
   });
@@ -163,6 +172,8 @@ export default function SchoolPrincipalsPage() {
       if (formData.email?.trim()) {
         formDataObj.append("email", formData.email.trim());
       }
+      formDataObj.append("telegram_chat_id", formData.telegram_chat_id || "");
+      formDataObj.append("bale_chat_id", formData.bale_chat_id || "");
       if (formData.password?.trim()) {
         formDataObj.append("password", formData.password.trim());
       }
@@ -189,6 +200,8 @@ export default function SchoolPrincipalsPage() {
           phone: "",
           email: "",
           password: "",
+          telegram_chat_id: "",
+          bale_chat_id: "",
           is_active: true,
           profile_picture: null,
         });
@@ -234,6 +247,8 @@ export default function SchoolPrincipalsPage() {
       formDataObj.append("name", formData.name.trim());
       formDataObj.append("phone", formData.phone.trim());
       formDataObj.append("email", formData.email?.trim() || "");
+      formDataObj.append("telegram_chat_id", formData.telegram_chat_id || "");
+      formDataObj.append("bale_chat_id", formData.bale_chat_id || "");
       formDataObj.append("is_active", formData.is_active.toString());
       if (formData.profile_picture) {
         formDataObj.append("profile_picture", formData.profile_picture);
@@ -305,6 +320,8 @@ export default function SchoolPrincipalsPage() {
       phone: principal.phone,
       email: principal.email || "",
       password: "",
+      telegram_chat_id: principal.profile?.telegram_chat_id || "",
+      bale_chat_id: principal.profile?.bale_chat_id || "",
       is_active: principal.is_active,
       profile_picture: null,
     });
@@ -407,6 +424,8 @@ export default function SchoolPrincipalsPage() {
                 phone: "",
                 email: "",
                 password: "",
+                telegram_chat_id: "",
+                bale_chat_id: "",
                 is_active: true,
               });
               setFormError(null);
@@ -476,6 +495,8 @@ export default function SchoolPrincipalsPage() {
                   phone: "",
                   email: "",
                   password: "",
+                  telegram_chat_id: "",
+                  bale_chat_id: "",
                   is_active: true,
                 });
                 setFormError(null);
@@ -684,6 +705,8 @@ export default function SchoolPrincipalsPage() {
                     phone: "",
                     email: "",
                     password: "",
+                    telegram_chat_id: "",
+                    bale_chat_id: "",
                     is_active: true,
                   });
                   setFormError(null);
@@ -878,6 +901,72 @@ export default function SchoolPrincipalsPage() {
                 </p>
               </div>
 
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی تلگرام (اختیاری)
+                </label>
+                <div className="relative">
+                  <MessageCircle
+                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                      theme === "dark" ? "text-slate-400" : "text-gray-400"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={formData.telegram_chat_id || ""}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        telegram_chat_id: e.target.value,
+                      }))
+                    }
+                    placeholder="@telegram_id"
+                    className={`w-full pr-10 pl-4 py-3 rounded-lg border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white focus:ring-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 focus:ring-blue-500/20"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی بله (اختیاری)
+                </label>
+                <div className="relative">
+                  <MessageCircle
+                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                      theme === "dark" ? "text-slate-400" : "text-gray-400"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={formData.bale_chat_id || ""}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        bale_chat_id: e.target.value,
+                      }))
+                    }
+                    placeholder="@bale_id"
+                    className={`w-full pr-10 pl-4 py-3 rounded-lg border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white focus:ring-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 focus:ring-blue-500/20"
+                    }`}
+                  />
+                </div>
+              </div>
+
               {/* Password Field */}
               <div>
                 <label
@@ -976,6 +1065,8 @@ export default function SchoolPrincipalsPage() {
                     phone: "",
                     email: "",
                     password: "",
+                    telegram_chat_id: "",
+                    bale_chat_id: "",
                     is_active: true,
                   });
                   setFormError(null);
@@ -1220,6 +1311,72 @@ export default function SchoolPrincipalsPage() {
                 >
                   برای ورود با ایمیل به جای شماره همراه
                 </p>
+              </div>
+
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی تلگرام (اختیاری)
+                </label>
+                <div className="relative">
+                  <MessageCircle
+                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                      theme === "dark" ? "text-slate-400" : "text-gray-400"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={formData.telegram_chat_id || ""}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        telegram_chat_id: e.target.value,
+                      }))
+                    }
+                    placeholder="@telegram_id"
+                    className={`w-full pr-10 pl-4 py-3 rounded-lg border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white focus:ring-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 focus:ring-blue-500/20"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  چت آیدی بله (اختیاری)
+                </label>
+                <div className="relative">
+                  <MessageCircle
+                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                      theme === "dark" ? "text-slate-400" : "text-gray-400"
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    value={formData.bale_chat_id || ""}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        bale_chat_id: e.target.value,
+                      }))
+                    }
+                    placeholder="@bale_id"
+                    className={`w-full pr-10 pl-4 py-3 rounded-lg border outline-none focus:ring-2 transition-all ${
+                      theme === "dark"
+                        ? "bg-slate-800/50 border-slate-700/50 text-white focus:ring-blue-500/50"
+                        : "bg-white border-gray-200 text-gray-900 focus:ring-blue-500/20"
+                    }`}
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-3">

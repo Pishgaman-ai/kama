@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     let query = `
       SELECT 
         u.id, u.school_id, u.name, u.email, u.phone, u.national_id, 
-        u.role, u.is_active, u.created_at, u.last_login, u.profile_picture_url,
+        u.role, u.is_active, u.created_at, u.last_login, u.profile_picture_url, u.profile,
         s.name as school_name
       FROM users u
       LEFT JOIN schools s ON u.school_id = s.id
@@ -124,6 +124,7 @@ export async function GET(request: NextRequest) {
         created_at: user.created_at,
         last_login: user.last_login,
         profile_picture_url: user.profile_picture_url,
+        profile: user.profile,
       }));
 
       return NextResponse.json({

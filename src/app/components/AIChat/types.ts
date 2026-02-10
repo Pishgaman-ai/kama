@@ -28,6 +28,7 @@ export interface User {
 export interface AIChatComponentProps {
   user: User;
   onBack?: () => void;
+  apiPath?: string;
 }
 
 export type UserRole = "admin" | "teacher" | "student" | "parent";

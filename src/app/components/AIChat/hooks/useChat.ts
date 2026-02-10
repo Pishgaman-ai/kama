@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Chat, Message, User } from "../types";
 
-export const useChat = (user: User) => {
+export const useChat = (user: User, apiPath: string = "/api/ai-chat") => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -191,7 +191,7 @@ export const useChat = (user: User) => {
         abortControllerRef.current = new AbortController();
 
         // Send request with streaming
-        const response = await fetch("/api/ai-chat", {
+        const response = await fetch(apiPath, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -231,15 +231,25 @@ export const useChat = (user: User) => {
         let accumulatedContent = "";
 
         if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                console.log("[Stream] Completed. Total length:", accumulatedContent.length);
+                break;
+              }
 
-            const chunk = decoder.decode(value, { stream: true });
-            accumulatedContent += chunk;
+              const chunk = decoder.decode(value, { stream: true });
+              accumulatedContent += chunk;
 
-            // Update the assistant message content incrementally
-            updateMessageContent(chatId!, assistantMessageId, accumulatedContent);
+              console.log("[Stream] Chunk received. Length:", chunk.length, "Total:", accumulatedContent.length);
+
+              // Update the assistant message content incrementally
+              updateMessageContent(chatId!, assistantMessageId, accumulatedContent);
+            }
+          } catch (streamError) {
+            console.error("[Stream] Error reading stream:", streamError);
+            throw streamError;
           }
         }
 
@@ -285,6 +295,7 @@ export const useChat = (user: User) => {
       chats,
       user,
       isLoading,
+      apiPath,
       createNewChat,
       addMessage,
       updateChatTitle,

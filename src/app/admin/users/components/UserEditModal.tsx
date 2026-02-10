@@ -6,6 +6,7 @@ import {
   Mail,
   Phone,
   IdCard,
+  MessageCircle,
   Shield,
   Key,
   Building,
@@ -27,6 +28,10 @@ interface User {
   is_active: boolean;
   password?: string;
   profile_picture_url?: string;
+  profile?: {
+    telegram_chat_id?: string;
+    bale_chat_id?: string;
+  };
 }
 
 interface School {
@@ -62,6 +67,10 @@ export default function UserEditModal({
     is_active: true,
     password: "",
     profile_picture_url: "",
+    profile: {
+      telegram_chat_id: "",
+      bale_chat_id: "",
+    },
   });
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
     null
@@ -72,7 +81,13 @@ export default function UserEditModal({
 
   useEffect(() => {
     if (user) {
-      setFormData(user);
+      setFormData({
+        ...user,
+        profile: {
+          telegram_chat_id: user.profile?.telegram_chat_id || "",
+          bale_chat_id: user.profile?.bale_chat_id || "",
+        },
+      });
     }
   }, [user]);
 
@@ -131,6 +146,19 @@ export default function UserEditModal({
       // Handle file upload here (e.g., upload to server, convert to base64, etc.)
       console.log(file);
     }
+  };
+
+  const handleChatIdChange = (
+    platform: "telegram_chat_id" | "bale_chat_id",
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      profile: {
+        ...prev.profile,
+        [platform]: value,
+      },
+    }));
   };
 
   const getRoleLabel = (role: string) => {
@@ -390,6 +418,74 @@ export default function UserEditModal({
                   />
                 </div>
               </div>
+
+              {(formData.role === "teacher" || formData.role === "principal") && (
+                <>
+                  <div>
+                    <label
+                      htmlFor="telegram_chat_id"
+                      className={`block text-sm font-medium mb-2 ${
+                        theme === "dark" ? "text-slate-300" : "text-gray-700"
+                      }`}
+                    >
+                      چت آیدی تلگرام
+                    </label>
+                    <div className="relative">
+                      <MessageCircle
+                        className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                          theme === "dark" ? "text-slate-400" : "text-gray-400"
+                        }`}
+                      />
+                      <input
+                        type="text"
+                        id="telegram_chat_id"
+                        value={formData.profile?.telegram_chat_id || ""}
+                        onChange={(e) =>
+                          handleChatIdChange("telegram_chat_id", e.target.value)
+                        }
+                        className={`w-full pr-10 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                          theme === "dark"
+                            ? "bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                            : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:ring-blue-500 focus:border-blue-500"
+                        }`}
+                        placeholder="@telegram_id"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="bale_chat_id"
+                      className={`block text-sm font-medium mb-2 ${
+                        theme === "dark" ? "text-slate-300" : "text-gray-700"
+                      }`}
+                    >
+                      چت آیدی بله
+                    </label>
+                    <div className="relative">
+                      <MessageCircle
+                        className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                          theme === "dark" ? "text-slate-400" : "text-gray-400"
+                        }`}
+                      />
+                      <input
+                        type="text"
+                        id="bale_chat_id"
+                        value={formData.profile?.bale_chat_id || ""}
+                        onChange={(e) =>
+                          handleChatIdChange("bale_chat_id", e.target.value)
+                        }
+                        className={`w-full pr-10 pl-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+                          theme === "dark"
+                            ? "bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                            : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:ring-blue-500 focus:border-blue-500"
+                        }`}
+                        placeholder="@bale_id"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* School */}
               <div>

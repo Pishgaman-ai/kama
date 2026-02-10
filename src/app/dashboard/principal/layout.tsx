@@ -50,9 +50,9 @@ export default function PrincipalLayout({
   const router = useRouter();
   const pathname = usePathname();
 
-  // Check if we're on the AI communication full-screen page
-  const isAICommunicationFullScreen =
-    pathname === "/dashboard/principal/ai-communication";
+  // Check if we're on a full-screen AI page
+  const isAIFullScreen =
+    pathname === "/dashboard/principal/principal-assistant";
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -142,8 +142,8 @@ export default function PrincipalLayout({
     },
     {
       icon: Bot,
-      label: "ارتباط با هوش مصنوعی",
-      href: "/dashboard/principal/ai-communication",
+      label: "دستیار مدیر",
+      href: "/dashboard/principal/principal-assistant",
     },
     { icon: Settings, label: "تنظیمات", href: "/dashboard/principal/settings" },
   ];
@@ -177,8 +177,8 @@ export default function PrincipalLayout({
     return null;
   }
 
-  // If we're on the AI communication full-screen page, render children without layout
-  if (isAICommunicationFullScreen) {
+  // If we're on a full-screen AI page, render children without layout
+  if (isAIFullScreen) {
     return <>{children}</>;
   }
 
@@ -503,6 +503,8 @@ export default function PrincipalLayout({
                     ? "مدیریت درس‌ها"
                     : pathname === "/dashboard/principal/reports"
                     ? "گزارش‌ها"
+                    : pathname === "/dashboard/principal/principal-assistant"
+                    ? "دستیار مدیر"
                     : pathname === "/dashboard/principal/settings"
                     ? "تنظیمات"
                     : "داشبورد مدیر مدرسه"}

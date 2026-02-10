@@ -144,11 +144,19 @@ export default function ChatInput({
 
     if (isRecording) {
       recognitionRef.current?.stop();
+      setIsRecording(false);
     } else {
-      recognitionRef.current?.start();
+      try {
+        recognitionRef.current?.start();
+        setIsRecording(true);
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+        // If recognition is already started, just update state
+        if ((error as Error).message?.includes('already started')) {
+          setIsRecording(true);
+        }
+      }
     }
-
-    setIsRecording(!isRecording);
   };
 
   const renderRecordingStatus = () =>

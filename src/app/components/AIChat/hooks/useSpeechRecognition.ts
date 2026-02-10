@@ -65,7 +65,11 @@ export const useSpeechRecognition = () => {
         recognition.onerror = (event: { error: string }) => {
           // eslint-disable-line @typescript-eslint/no-explicit-any
           console.error("Speech recognition error", event.error);
-          setIsListening(false);
+
+          // Don't stop listening if error is 'aborted' or 'no-speech'
+          if (event.error !== 'aborted' && event.error !== 'no-speech') {
+            setIsListening(false);
+          }
         };
 
         recognitionRef.current = recognition;
@@ -85,9 +89,17 @@ export const useSpeechRecognition = () => {
       return;
     }
 
-    setTranscript("");
-    recognitionRef.current.start();
-    setIsListening(true);
+    try {
+      setTranscript("");
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (error) {
+      console.error("Error starting speech recognition:", error);
+      // If already started, just update state
+      if ((error as Error).message?.includes('already started')) {
+        setIsListening(true);
+      }
+    }
   }, []);
 
   const stopListening = useCallback(() => {

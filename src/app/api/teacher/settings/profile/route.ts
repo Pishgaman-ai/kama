@@ -47,6 +47,8 @@ export async function PUT(request: NextRequest) {
     const { fields, files } = await parseFormData(request);
 
     const { name, email, phone, national_id } = fields;
+    const telegramChatId = fields.telegram_chat_id?.trim() || null;
+    const baleChatId = fields.bale_chat_id?.trim() || null;
 
     // Validate input
     if (email && !email.includes("@")) {
@@ -94,9 +96,19 @@ export async function PUT(request: NextRequest) {
         SET name = COALESCE($1, name), 
             email = COALESCE($2, email), 
             phone = COALESCE($3, phone),
+            profile = COALESCE(profile, '{}'::jsonb) || jsonb_build_object(
+              'telegram_chat_id', $4::text,
+              'bale_chat_id', $5::text
+            ),
             updated_at = CURRENT_TIMESTAMP`;
 
-      const values = [name || null, email || null, phone || null];
+      const values = [
+        name || null,
+        email || null,
+        phone || null,
+        telegramChatId,
+        baleChatId,
+      ];
 
       // Add national_id to update if provided
       if (national_id !== undefined) {
@@ -112,7 +124,7 @@ export async function PUT(request: NextRequest) {
 
       query += `
         WHERE id = $${values.length + 1}
-        RETURNING id, email, phone, name, national_id, role, school_id, profile_picture_url, created_at`;
+        RETURNING id, email, phone, name, national_id, role, school_id, profile_picture_url, profile, created_at`;
 
       values.push(userData.id);
 
@@ -139,6 +151,7 @@ export async function PUT(request: NextRequest) {
           role: updatedUser.role,
           school_id: updatedUser.school_id,
           profile_picture_url: updatedUser.profile_picture_url,
+          profile: updatedUser.profile,
           created_at: updatedUser.created_at,
         },
       });
@@ -155,6 +168,7 @@ export async function PUT(request: NextRequest) {
           role: updatedUser.role,
           school_id: updatedUser.school_id,
           profile_picture_url: updatedUser.profile_picture_url,
+          profile: updatedUser.profile,
           created_at: updatedUser.created_at,
         }),
         {

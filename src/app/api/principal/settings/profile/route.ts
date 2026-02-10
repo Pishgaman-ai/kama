@@ -63,6 +63,12 @@ export async function PUT(request: NextRequest) {
       const { fields, files } = await parseFormData(request);
 
       const { name, email, phone, national_id } = fields;
+      const telegramChatId = fields.telegram_chat_id?.trim() || null;
+      const baleChatId = fields.bale_chat_id?.trim() || null;
+      const telegramApiKey = fields.telegram_api_key?.trim() || null;
+      const baleApiKey = fields.bale_api_key?.trim() || null;
+      const telegramBotId = fields.telegram_bot_id?.trim() || null;
+      const baleBotId = fields.bale_bot_id?.trim() || null;
 
       // Validate input
       if (email && !email.includes("@")) {
@@ -110,9 +116,27 @@ export async function PUT(request: NextRequest) {
         SET name = COALESCE($1, name), 
             email = COALESCE($2, email), 
             phone = COALESCE($3, phone),
+            profile = COALESCE(profile, '{}'::jsonb) || jsonb_build_object(
+              'telegram_chat_id', $4::text,
+              'bale_chat_id', $5::text,
+              'telegram_api_key', $6::text,
+              'bale_api_key', $7::text,
+              'telegram_bot_id', $8::text,
+              'bale_bot_id', $9::text
+            ),
             updated_at = CURRENT_TIMESTAMP`;
 
-      const values = [name || null, email || null, phone || null];
+      const values = [
+        name || null,
+        email || null,
+        phone || null,
+        telegramChatId,
+        baleChatId,
+        telegramApiKey,
+        baleApiKey,
+        telegramBotId,
+        baleBotId,
+      ];
 
       // Add national_id to update if provided
       if (national_id !== undefined) {
@@ -128,7 +152,7 @@ export async function PUT(request: NextRequest) {
 
       query += `
         WHERE id = $${values.length + 1}
-        RETURNING id, email, phone, name, national_id, role, school_id, profile_picture_url, created_at`;
+        RETURNING id, email, phone, name, national_id, role, school_id, profile_picture_url, profile, created_at`;
 
       values.push(userData.id);
 
@@ -145,13 +169,28 @@ export async function PUT(request: NextRequest) {
         }
       }
 
-      client.release();
-
       if (result.rows.length === 0) {
         return NextResponse.json({ error: "کاربر یافت نشد" }, { status: 404 });
       }
 
       const updatedUser = result.rows[0];
+
+      // Propagate API keys set by principal to all teachers, students, and parents of the same school
+      if (updatedUser.school_id) {
+        await client.query(
+          `
+          UPDATE users
+          SET profile = COALESCE(profile, '{}'::jsonb) || jsonb_build_object(
+            'telegram_api_key', $1::text,
+            'bale_api_key', $2::text
+          ),
+          updated_at = CURRENT_TIMESTAMP
+          WHERE school_id = $3
+            AND role::text = ANY($4::text[])
+          `,
+          [telegramApiKey, baleApiKey, updatedUser.school_id, ["teacher", "student", "parent"]]
+        );
+      }
 
       // Create response
       const response = NextResponse.json({
@@ -165,6 +204,7 @@ export async function PUT(request: NextRequest) {
           role: updatedUser.role,
           school_id: updatedUser.school_id,
           profile_picture_url: updatedUser.profile_picture_url,
+          profile: updatedUser.profile,
           created_at: updatedUser.created_at,
         },
       });
@@ -181,6 +221,7 @@ export async function PUT(request: NextRequest) {
           role: updatedUser.role,
           school_id: updatedUser.school_id,
           profile_picture_url: updatedUser.profile_picture_url,
+          profile: updatedUser.profile,
           created_at: updatedUser.created_at,
         }),
         {
@@ -192,9 +233,8 @@ export async function PUT(request: NextRequest) {
       );
 
       return response;
-    } catch (error) {
+    } finally {
       client.release();
-      throw error;
     }
   } catch (error) {
     console.error("Update profile API error:", error);

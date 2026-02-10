@@ -8,6 +8,8 @@ interface FormFields {
   phone?: string;
   email?: string;
   password?: string;
+  telegram_chat_id?: string;
+  bale_chat_id?: string;
 }
 
 interface FormFiles {
@@ -142,7 +144,10 @@ export async function POST(
 
     // Parse form data (including file uploads)
     const { fields, files } = await parseFormData(request);
-    const { name, phone, email, password } = fields;
+    const { name, phone, email, password, telegram_chat_id, bale_chat_id } =
+      fields;
+    const telegramChatId = telegram_chat_id?.trim() || null;
+    const baleChatId = bale_chat_id?.trim() || null;
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -259,7 +264,23 @@ export async function POST(
       const userResult = await client.query(
         `
         INSERT INTO users (school_id, phone, email, name, role, profile, profile_picture_url, is_active, password_hash)
-        VALUES ($1, $2, $3, $4, 'principal', '{"position": "principal"}'::jsonb, $5, true, $6)
+        VALUES (
+          $1,
+          $2,
+          $3,
+          $4,
+          'principal',
+          jsonb_strip_nulls(
+            jsonb_build_object(
+              'position', 'principal',
+              'telegram_chat_id', $7::text,
+              'bale_chat_id', $8::text
+            )
+          ),
+          $5,
+          true,
+          $6
+        )
         RETURNING id, school_id, phone, email, name, role, is_active, profile, profile_picture_url, created_at, updated_at
       `,
         [
@@ -269,6 +290,8 @@ export async function POST(
           name.trim(),
           profilePictureUrl,
           passwordHash,
+          telegramChatId,
+          baleChatId,
         ]
       );
 

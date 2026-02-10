@@ -10,6 +10,8 @@ interface FormFields {
   email?: string;
   phone?: string;
   national_id?: string;
+  telegram_chat_id?: string;
+  bale_chat_id?: string;
   role?: string;
   is_active?: string;
   school_id?: string;
@@ -181,11 +183,15 @@ export async function PUT(
       email,
       phone,
       national_id,
+      telegram_chat_id,
+      bale_chat_id,
       role,
       is_active,
       school_id,
       password,
     } = fields;
+    const telegramChatId = telegram_chat_id?.trim() || null;
+    const baleChatId = bale_chat_id?.trim() || null;
 
     let profilePictureUrl: string | null = null;
 
@@ -218,10 +224,7 @@ export async function PUT(
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
 
-      // If a new profile picture is uploaded, use it; otherwise keep the existing one
       const currentProfilePictureUrl = existingUser.rows[0].profile_picture_url;
-      const finalProfilePictureUrl =
-        profilePictureUrl || currentProfilePictureUrl;
 
       // Update user
       let query = `
@@ -233,10 +236,19 @@ export async function PUT(
           role = $5,
           is_active = $6,
           school_id = $7,
+          profile = COALESCE(profile, '{}'::jsonb) || jsonb_build_object(
+            'telegram_chat_id', $8::text,
+            'bale_chat_id', $9::text
+          ),
           updated_at = NOW()
       `;
 
-      const queryParams = [
+      const queryParams: (
+        | string
+        | boolean
+        | null
+        | undefined
+      )[] = [
         name,
         email,
         phone,
@@ -244,15 +256,17 @@ export async function PUT(
         role,
         is_active === "true",
         school_id,
-        userId,
+        telegramChatId,
+        baleChatId,
       ];
 
       // Add profile picture URL to query if it's being updated
       if (profilePictureUrl !== null) {
-        query += `, profile_picture_url = $8`;
+        query += `, profile_picture_url = $10`;
         queryParams.push(profilePictureUrl);
       }
 
+      queryParams.push(userId);
       query += ` WHERE id = $${queryParams.length} RETURNING id`;
 
       const result = await client.query(query, queryParams);

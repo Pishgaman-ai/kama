@@ -7,6 +7,8 @@ interface FormFields {
   phone?: string;
   email?: string;
   is_active?: string;
+  telegram_chat_id?: string;
+  bale_chat_id?: string;
 }
 
 interface FormFiles {
@@ -60,7 +62,10 @@ export async function PUT(
 
     // Parse form data (including file uploads)
     const { fields, files } = await parseFormData(request);
-    const { name, phone, email, is_active } = fields;
+    const { name, phone, email, is_active, telegram_chat_id, bale_chat_id } =
+      fields;
+    const telegramChatId = telegram_chat_id?.trim() || null;
+    const baleChatId = bale_chat_id?.trim() || null;
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -154,13 +159,19 @@ export async function PUT(
 
       const currentProfilePictureUrl =
         currentUser.rows[0]?.profile_picture_url || null;
-      const finalProfilePictureUrl =
-        profilePictureUrl || currentProfilePictureUrl;
-
       // Update principal user record
       let query = `
         UPDATE users
-        SET name = $1, phone = $2, email = $3, is_active = $4, updated_at = NOW()
+        SET
+          name = $1,
+          phone = $2,
+          email = $3,
+          is_active = $4,
+          profile = COALESCE(profile, '{}'::jsonb) || jsonb_build_object(
+            'telegram_chat_id', $5::text,
+            'bale_chat_id', $6::text
+          ),
+          updated_at = NOW()
       `;
 
       const queryParams = [
@@ -168,15 +179,17 @@ export async function PUT(
         phone.trim(),
         email?.trim() || null,
         is_active !== "false",
-        principalId,
+        telegramChatId,
+        baleChatId,
       ];
 
       // Add profile picture URL to query if it's being updated
       if (profilePictureUrl !== null) {
-        query += `, profile_picture_url = $5`;
+        query += `, profile_picture_url = $7`;
         queryParams.push(profilePictureUrl);
       }
 
+      queryParams.push(principalId);
       query += ` WHERE id = $${queryParams.length} AND role = 'principal' RETURNING id, school_id, name, phone, email, role, is_active, profile, profile_picture_url, created_at, updated_at`;
 
       const principalResult = await client.query(query, queryParams);

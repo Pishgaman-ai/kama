@@ -39,6 +39,7 @@
 ### 📝 فعالیت‌های آموزشی
 
 - [EDUCATIONAL_ACTIVITIES.md](./EDUCATIONAL_ACTIVITIES.md) - فعالیت‌های آموزشی
+- **[BULK_ACTIVITIES_GUIDE.md](./BULK_ACTIVITIES_GUIDE.md)** - راهنمای مدیریت گروهی فعالیت‌ها ⭐ جدید
 - [ACTIVITY_TYPES_FEATURE.md](./ACTIVITY_TYPES_FEATURE.md) - ویژگی انواع فعالیت
 - [ACTIVITY_TYPES_SETUP.md](./ACTIVITY_TYPES_SETUP.md) - راه‌اندازی انواع فعالیت
 - [ACTIVITY_TYPES_MIGRATION.md](./ACTIVITY_TYPES_MIGRATION.md) - مایگریشن انواع فعالیت
@@ -56,6 +57,7 @@
 ### 🤖 هوش مصنوعی
 
 - [AI_INTEGRATION.md](./AI_INTEGRATION.md) - یکپارچه‌سازی هوش مصنوعی
+- **[PRINCIPAL_ASSISTANT_IMPROVEMENTS.md](./PRINCIPAL_ASSISTANT_IMPROVEMENTS.md)** - بهبودهای دستیار مدیر و جلوگیری از توهم ⭐ جدید
 - [AI_SERVICE_IMPLEMENTATION_SUMMARY.md](./AI_SERVICE_IMPLEMENTATION_SUMMARY.md) - خلاصه پیاده‌سازی سرویس AI
 - [AI_SERVICE_INTEGRATION_GUIDE.md](./AI_SERVICE_INTEGRATION_GUIDE.md) - راهنمای یکپارچه‌سازی
 - [AI_ASSESSMENT_SERVICE_INTEGRATION.md](./AI_ASSESSMENT_SERVICE_INTEGRATION.md) - یکپارچه‌سازی ارزیابی AI
@@ -133,11 +135,38 @@ node scripts/seed-iran-curriculum-lessons.js
 
 1. **داشبورد**: [PRINCIPAL_DASHBOARD.md](./PRINCIPAL_DASHBOARD.md)
 2. **مدیریت کلاس**: [CLASS_MANAGEMENT.md](./CLASS_MANAGEMENT.md)
-3. **دروس**: [CURRICULUM_STRUCTURE.md](./CURRICULUM_STRUCTURE.md)
+3. **مدیریت گروهی فعالیت‌ها**: [BULK_ACTIVITIES_GUIDE.md](./BULK_ACTIVITIES_GUIDE.md) 🔥
+4. **دروس**: [CURRICULUM_STRUCTURE.md](./CURRICULUM_STRUCTURE.md)
 
 ---
 
 ## ⚡ تغییرات اخیر
+
+### نسخه 10.2 - بهمن ۱۴۰۴ 🆕
+
+#### ✅ سیستم مدیریت گروهی فعالیت‌ها (Bulk Activities)
+- قابلیت import/export فعالیت‌ها از/به Excel
+- تولید الگوهای سفارشی با فیلتر پایه، کلاس و درس
+- اعتبارسنجی کامل داده‌ها (دانش‌آموز، معلم، کلاس، درس)
+- گزارش‌دهی جامع خطاها و نتایج
+- پشتیبانی از عملیات insert و update
+- نمایش آمار و تحلیل فعالیت‌ها
+- مستندات: **[BULK_ACTIVITIES_GUIDE.md](./BULK_ACTIVITIES_GUIDE.md)** 🔥
+
+#### 📊 بروزرسانی مستندات دیتابیس
+- افزودن بخش جامع "Bulk Activities Management"
+- توضیحات تکمیلی جداول مرتبط
+- دیاگرام‌های روابط و جریان داده
+- مثال‌های کاربردی و کوئری‌های SQL
+- مستندات: [DATABASE_STRUCTURE.md](./DATABASE_STRUCTURE.md)
+
+#### 🤖 بهبودهای دستیار هوش مصنوعی مدیر
+- اصلاح کوئری‌ها به جدول `lessons` (حذف کامل `subjects`)
+- بهبود Function Call برای استخراج دقیق نام دانش‌آموز و درس
+- افزودن قوانین Anti-Hallucination جامع
+- بهبود Narrative Generation Prompt
+- اضافه کردن توابع validation: `validateStudentInClass`, `getStudentActiveSubjects`
+- مستندات: **[PRINCIPAL_ASSISTANT_IMPROVEMENTS.md](./PRINCIPAL_ASSISTANT_IMPROVEMENTS.md)** 🔥
 
 ### نسخه 10.1 - آذر ۱۴۰۴
 
@@ -203,6 +232,14 @@ node scripts/check-lessons-schema.js
 
 ---
 
-**تاریخ به‌روزرسانی**: ۱۴۰۴/۱۰/۱۶
-**نسخه**: 10.1
+**تاریخ به‌روزرسانی**: ۱۴۰۴/۱۱/۱۷ (February 6, 2026)
+**نسخه**: 10.2
 **وضعیت**: Production Ready ✅
+
+### 🎯 ویژگی‌های برجسته نسخه فعلی
+
+1. **مدیریت گروهی فعالیت‌ها**: ورود و خروجی اکسل با اعتبارسنجی کامل
+2. **162 درس برنامه درسی ملی**: پوشش کامل دوره ابتدایی، متوسطه اول و دوم
+3. **سیستم هوش مصنوعی**: نمره‌دهی و چت هوشمند
+4. **پنل تحلیلی مدیران**: آمار و نمودارهای جامع
+5. **چند روش احراز هویت**: ایمیل، موبایل، کد ملی

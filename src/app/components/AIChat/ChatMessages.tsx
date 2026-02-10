@@ -11,36 +11,49 @@ import { Message, UserRole, RoleConfig } from "./types";
 function useTypewriter(text: string, speed = 30) {
   const [displayText, setDisplayText] = useState("");
   const [isComplete, setIsComplete] = useState(false);
-  const prevTextRef = useRef("");
+  const indexRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!text) {
       setDisplayText("");
       setIsComplete(false);
-      prevTextRef.current = "";
+      indexRef.current = 0;
       return;
     }
 
-    // If text changed (new content arrived), continue typing from current position
-    if (prevTextRef.current !== text) {
-      prevTextRef.current = text;
-      setIsComplete(false);
-
-      let currentIndex = displayText.length;
-
-      const timer = setInterval(() => {
-        if (currentIndex < text.length) {
-          currentIndex++;
-          setDisplayText(text.slice(0, currentIndex));
-        } else {
-          setIsComplete(true);
-          clearInterval(timer);
-        }
-      }, speed);
-
-      return () => clearInterval(timer);
+    // If we already displayed everything so far, wait for more text
+    if (indexRef.current >= text.length) {
+      return;
     }
-  }, [text, speed, displayText.length]);
+
+    setIsComplete(false);
+
+    // Clear any existing timer before starting a new one
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    timerRef.current = setInterval(() => {
+      if (indexRef.current < text.length) {
+        indexRef.current++;
+        setDisplayText(text.slice(0, indexRef.current));
+      } else {
+        setIsComplete(true);
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      }
+    }, speed);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [text, speed]);
 
   return { displayText, isComplete };
 }
@@ -48,6 +61,7 @@ function useTypewriter(text: string, speed = 30) {
 interface ChatMessagesProps {
   messages: Message[];
   isLoading: boolean;
+  isGenerating?: boolean;
   roleConfig: RoleConfig;
   onSampleQuestionClick: (question: string) => void;
 }
@@ -330,6 +344,7 @@ function ChatMessageItem({
 export default function ChatMessages({
   messages,
   isLoading,
+  isGenerating,
   roleConfig,
   onSampleQuestionClick,
 }: ChatMessagesProps) {
@@ -352,11 +367,11 @@ export default function ChatMessages({
     }
   }
 
-  // Check if the last assistant message is recent (less than 5 seconds old)
+  // Use isGenerating to determine if we should animate, with fallback to time-based check
   const lastAssistantMessage = lastAssistantMessageIndex >= 0 ? messages[lastAssistantMessageIndex] : null;
-  const isRecentMessage = lastAssistantMessage
+  const isRecentMessage = isGenerating ?? (lastAssistantMessage
     ? (Date.now() - new Date(lastAssistantMessage.timestamp).getTime()) < 5000
-    : false;
+    : false);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50">

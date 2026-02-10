@@ -141,6 +141,7 @@ export default function PerformanceAnalysisPage() {
   const [comparisonOrder, setComparisonOrder] =
     useState<ComparisonOrder>("top");
   const [studentTab, setStudentTab] = useState<StudentTab>("decline");
+  const [showDataSources, setShowDataSources] = useState(false);
 
   const fetchAnalysis = async (override?: PerformanceAnalysisFilters) => {
     try {
@@ -399,47 +400,6 @@ export default function PerformanceAnalysisPage() {
 
   return (
     <div className="space-y-8 p-4 sm:p-6" dir="rtl">
-      <section className="rounded-2xl border p-4 sm:p-5 bg-white border-gray-200 dark:bg-slate-900/50 dark:border-slate-800/50">
-        <h2 className="text-base font-semibold mb-3">منابع داده داشبورد</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs text-slate-600 dark:text-slate-300">
-          <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-            <p className="font-semibold mb-1">فیلترهای جهانی</p>
-            <p>سال تحصیلی: جدول classes (ستون academic_year)</p>
-            <p>بازه تاریخ: educational_activities.activity_date، answers.submitted_at، exams.starts_at/ends_at</p>
-            <p>پایه: جدول classes (ستون grade_level)</p>
-            <p>کلاس: جدول classes (ستون id)</p>
-            <p>درس: جدول lessons (ستون id)</p>
-          </div>
-          <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-            <p className="font-semibold mb-1">کارت‌های KPI</p>
-            <p>کلاس‌های فعال: classes</p>
-            <p>دانش‌آموزان فعال: users (role=student) + class_memberships</p>
-            <p>فعالیت‌های آموزشی: educational_activities</p>
-            <p>میانگین عملکرد: class_grades</p>
-            <p>وضعیت آزمون‌ها: exams</p>
-            <p>پوشش ارزیابی مهارت: life_skills_assessments / active_life_assessments / growth_development_assessments</p>
-          </div>
-          <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-            <p className="font-semibold mb-1">نمودارها</p>
-            <p>روند فعالیت‌های یادگیری: educational_activities</p>
-            <p>??????????? ??????? ????: educational_activities</p>
-          </div>
-          <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-            <p className="font-semibold mb-1">پنل‌های بینش</p>
-            <p>تعامل دبیران: users (teacher) + teacher_assignments + educational_activities + class_grades</p>
-            <p>دانش‌آموزان نیازمند توجه: class_grades + educational_activities + behavioral_reports + ai_reports</p>
-            <p>مصرف هوش مصنوعی: ai_logs</p>
-          </div>
-          <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-            <p className="font-semibold mb-1">مرکز اقدام و سلامت داده</p>
-            <p>کلاس بدون دبیر: teacher_assignments</p>
-            <p>دانش‌آموز بدون والد: parent_student_relations</p>
-            <p>فعالیت بدون فایل: educational_activities</p>
-            <p>خطاهای هوش مصنوعی/احراز هویت: logs</p>
-          </div>
-        </div>
-      </section>
-
       <section className="rounded-2xl border p-4 sm:p-5 bg-white border-gray-200 dark:bg-slate-900/50 dark:border-slate-800/50">
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -897,6 +857,63 @@ export default function PerformanceAnalysisPage() {
             );
           })}
         </div>
+      </section>
+
+      <section className="rounded-2xl border bg-white border-gray-200 dark:bg-slate-900/50 dark:border-slate-800/50">
+        <button
+          onClick={() => setShowDataSources((prev) => !prev)}
+          className="flex w-full items-center justify-between p-4 sm:p-5 text-right"
+        >
+          <h2 className="text-base font-semibold">منابع داده داشبورد</h2>
+          <svg
+            className={`h-5 w-5 text-slate-500 transition-transform duration-200 ${showDataSources ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {showDataSources && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 px-4 pb-4 sm:px-5 sm:pb-5 text-xs text-slate-600 dark:text-slate-300">
+            <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+              <p className="font-semibold mb-1">فیلترهای جهانی</p>
+              <p>سال تحصیلی: جدول classes (ستون academic_year)</p>
+              <p>بازه تاریخ: educational_activities.activity_date، answers.submitted_at، exams.starts_at/ends_at</p>
+              <p>پایه: جدول classes (ستون grade_level)</p>
+              <p>کلاس: جدول classes (ستون id)</p>
+              <p>درس: جدول lessons (ستون id)</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+              <p className="font-semibold mb-1">کارت‌های KPI</p>
+              <p>کلاس‌های فعال: classes</p>
+              <p>دانش‌آموزان فعال: users (role=student) + class_memberships</p>
+              <p>فعالیت‌های آموزشی: educational_activities</p>
+              <p>میانگین عملکرد: class_grades</p>
+              <p>وضعیت آزمون‌ها: exams</p>
+              <p>پوشش ارزیابی مهارت: life_skills_assessments / active_life_assessments / growth_development_assessments</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+              <p className="font-semibold mb-1">نمودارها</p>
+              <p>روند فعالیت‌های یادگیری: educational_activities</p>
+              <p>مقایسه عملکرد کلاس‌ها: educational_activities</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+              <p className="font-semibold mb-1">پنل‌های بینش</p>
+              <p>تعامل دبیران: users (teacher) + teacher_assignments + educational_activities + class_grades</p>
+              <p>دانش‌آموزان نیازمند توجه: class_grades + educational_activities + behavioral_reports + ai_reports</p>
+              <p>مصرف هوش مصنوعی: ai_logs</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+              <p className="font-semibold mb-1">مرکز اقدام و سلامت داده</p>
+              <p>کلاس بدون دبیر: teacher_assignments</p>
+              <p>دانش‌آموز بدون والد: parent_student_relations</p>
+              <p>فعالیت بدون فایل: educational_activities</p>
+              <p>خطاهای هوش مصنوعی/احراز هویت: logs</p>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

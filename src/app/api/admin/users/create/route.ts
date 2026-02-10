@@ -10,6 +10,8 @@ interface FormFields {
   email?: string;
   phone?: string;
   national_id?: string;
+  telegram_chat_id?: string;
+  bale_chat_id?: string;
   role?: string;
   is_active?: string;
   school_id?: string;
@@ -83,11 +85,15 @@ export async function POST(request: NextRequest) {
       email,
       phone,
       national_id,
+      telegram_chat_id,
+      bale_chat_id,
       role,
       is_active,
       school_id,
       password,
     } = fields;
+    const telegramChatId = telegram_chat_id?.trim() || null;
+    const baleChatId = bale_chat_id?.trim() || null;
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -138,8 +144,15 @@ export async function POST(request: NextRequest) {
       const result = await client.query(
         `INSERT INTO users (
           school_id, name, email, phone, national_id, 
-          role, is_active, password_hash, profile_picture_url, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+          role, is_active, password_hash, profile, profile_picture_url, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+          jsonb_strip_nulls(
+            jsonb_build_object(
+              'telegram_chat_id', $9::text,
+              'bale_chat_id', $10::text
+            )
+          ),
+          $11, NOW(), NOW())
         RETURNING id`,
         [
           school_id,
@@ -150,6 +163,8 @@ export async function POST(request: NextRequest) {
           role,
           is_active !== undefined ? is_active === "true" : true,
           hashedPassword,
+          telegramChatId,
+          baleChatId,
           profilePictureUrl,
         ]
       );

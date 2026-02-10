@@ -31,7 +31,10 @@
       "Bash(taskkill //F //PID 23000)",
       "Bash(timeout 10 node:*)",
       "Bash(gh auth:*)",
-      "Bash(gh repo create:*)"
+      "Bash(gh repo create:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(tree:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

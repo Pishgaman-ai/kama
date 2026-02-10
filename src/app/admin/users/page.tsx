@@ -38,6 +38,10 @@ interface User {
   last_login?: string;
   password?: string;
   profile_picture_url?: string;
+  profile?: {
+    telegram_chat_id?: string;
+    bale_chat_id?: string;
+  };
 }
 
 interface School {
@@ -204,6 +208,8 @@ export default function AdminUsersPage() {
       formData.append("email", user.email || "");
       formData.append("phone", user.phone || "");
       formData.append("national_id", user.national_id || "");
+      formData.append("telegram_chat_id", user.profile?.telegram_chat_id || "");
+      formData.append("bale_chat_id", user.profile?.bale_chat_id || "");
       formData.append("role", user.role || "student");
       formData.append("is_active", user.is_active ? "true" : "false");
       formData.append("school_id", user.school_id || "");

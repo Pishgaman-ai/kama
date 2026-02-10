@@ -80,9 +80,7 @@ const isLocalhost =
   databaseHost === "::1";
 
 const sslEnabled =
-  process.env.DATABASE_SSL === "true" ||
-  process.env.DATABASE_SSL === "1" ||
-  (!isLocalhost && !process.env.DATABASE_SSL);
+  process.env.DATABASE_SSL === "true" || process.env.DATABASE_SSL === "1";
 
 const sslConfig = sslEnabled
   ? {

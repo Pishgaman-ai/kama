@@ -12,6 +12,7 @@ import { AIChatComponentProps, RoleConfig, UserRole, User } from "./types";
 interface ChatContainerProps {
   user: User;
   onBack?: () => void;
+  apiPath?: string;
 }
 
 const roleConfigs: Record<UserRole, RoleConfig> = {
@@ -65,7 +66,11 @@ const roleConfigs: Record<UserRole, RoleConfig> = {
   },
 };
 
-export default function ChatContainer({ user, onBack }: ChatContainerProps) {
+export default function ChatContainer({
+  user,
+  onBack,
+  apiPath,
+}: ChatContainerProps) {
   const {
     chats,
     currentChat,
@@ -78,7 +83,7 @@ export default function ChatContainer({ user, onBack }: ChatContainerProps) {
     deleteChat,
     sendMessage,
     stopGeneration,
-  } = useChat(user);
+  } = useChat(user, apiPath);
 
   const { isListening, transcript, toggleListening } = useSpeechRecognition();
 
@@ -228,6 +233,7 @@ export default function ChatContainer({ user, onBack }: ChatContainerProps) {
         <ChatMessages
           messages={messages}
           isLoading={isLoading}
+          isGenerating={isGenerating}
           roleConfig={roleConfig}
           onSampleQuestionClick={handleSampleQuestionClick}
         />
