@@ -11,8 +11,8 @@ import {
   Save,
   AlertCircle,
   Edit,
-  Upload,
   Lock,
+  Power,
 } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/utils";
 
@@ -36,7 +36,24 @@ interface User {
   created_at: Date;
 }
 
+interface BotWebhookStatus {
+  desired_url: string;
+  current_url: string;
+  enabled: boolean;
+  token_exists: boolean;
+  pending_update_count: number;
+  last_error_message: string | null;
+}
+
 export default function PrincipalSettingsPage() {
+  const publicAppUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/, "");
+  const telegramWebhookUrl = publicAppUrl
+    ? `${publicAppUrl}/api/webhook/telegram/{schoolId}`
+    : "/api/webhook/telegram/{schoolId}";
+  const baleWebhookUrl = publicAppUrl
+    ? `${publicAppUrl}/api/webhook/bale/{schoolId}`
+    : "/api/webhook/bale/{schoolId}";
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,9 +98,118 @@ export default function PrincipalSettingsPage() {
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [languageModel, setLanguageModel] = useState<"cloud" | "local">("cloud");
+  const [botWebhookStatus, setBotWebhookStatus] = useState<{
+    telegram: BotWebhookStatus;
+    bale: BotWebhookStatus;
+    baseDomain: string | null;
+  }>({
+    telegram: {
+      desired_url: "",
+      current_url: "",
+      enabled: false,
+      token_exists: false,
+      pending_update_count: 0,
+      last_error_message: null,
+    },
+    bale: {
+      desired_url: "",
+      current_url: "",
+      enabled: false,
+      token_exists: false,
+      pending_update_count: 0,
+      last_error_message: null,
+    },
+    baseDomain: null,
+  });
+  const [botWebhookLoading, setBotWebhookLoading] = useState(false);
+  const [botWebhookActionLoading, setBotWebhookActionLoading] = useState<{
+    telegram: boolean;
+    bale: boolean;
+  }>({
+    telegram: false,
+    bale: false,
+  });
+  const [botWebhookError, setBotWebhookError] = useState<string | null>(null);
+  const [botWebhookSuccess, setBotWebhookSuccess] = useState<string | null>(null);
+  const [botBaseDomain, setBotBaseDomain] = useState("");
 
   const { theme } = useTheme();
   const router = useRouter();
+
+  const fetchBotWebhookStatus = async () => {
+    try {
+      setBotWebhookLoading(true);
+      const response = await fetch("/api/principal/settings/bot-webhooks");
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setBotWebhookStatus({
+          telegram: result.data.telegram,
+          bale: result.data.bale,
+          baseDomain: result.data.baseDomain || null,
+        });
+        setBotBaseDomain(result.data.baseDomain || "");
+      }
+    } catch (err) {
+      console.error("Error fetching bot webhook status:", err);
+    } finally {
+      setBotWebhookLoading(false);
+    }
+  };
+
+  const toggleBotWebhook = async (
+    platform: "telegram" | "bale",
+    enabled: boolean
+  ) => {
+    setBotWebhookError(null);
+    setBotWebhookSuccess(null);
+    setBotWebhookActionLoading((prev) => ({ ...prev, [platform]: true }));
+
+    try {
+      const response = await fetch("/api/principal/settings/bot-webhooks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          platform,
+          enabled,
+          token:
+            platform === "telegram"
+              ? formData.telegram_api_key.trim()
+              : formData.bale_api_key.trim(),
+          chatId:
+            platform === "telegram"
+              ? formData.telegram_chat_id.trim()
+              : formData.bale_chat_id.trim(),
+          botId:
+            platform === "telegram"
+              ? formData.telegram_bot_id.trim()
+              : formData.bale_bot_id.trim(),
+          baseDomain: botBaseDomain.trim(),
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setBotWebhookError(result.error || "خطا در تغییر وضعیت بات");
+        return;
+      }
+
+      setBotWebhookSuccess(
+        enabled
+          ? `بات ${platform === "telegram" ? "تلگرام" : "بله"} فعال شد`
+          : `بات ${platform === "telegram" ? "تلگرام" : "بله"} غیرفعال شد`
+      );
+
+      await fetchBotWebhookStatus();
+    } catch (err) {
+      console.error("Error toggling bot webhook:", err);
+      setBotWebhookError("خطا در ارتباط با سرور برای تغییر وضعیت بات");
+    } finally {
+      setBotWebhookActionLoading((prev) => ({ ...prev, [platform]: false }));
+    }
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -117,6 +243,8 @@ export default function PrincipalSettingsPage() {
         if (data.user.profile_picture_url) {
           setExistingProfilePicture(data.user.profile_picture_url);
         }
+
+        await fetchBotWebhookStatus();
       } catch (error) {
         console.error("Error checking auth:", error);
         router.push("/signin");
@@ -627,9 +755,16 @@ export default function PrincipalSettingsPage() {
                         ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
                         : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
                     }`}
-                    placeholder="@your_telegram_id"
+                    placeholder="مثال: 123456789"
                   />
                 </div>
+                <p
+                  className={`mt-2 text-xs ${
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  }`}
+                >
+                  چت‌آیدی تلگرام عددی است، نه username (با @).
+                </p>
               </div>
 
               <div>
@@ -660,9 +795,16 @@ export default function PrincipalSettingsPage() {
                         ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
                         : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
                     }`}
-                    placeholder="@your_bale_id"
+                    placeholder="مثال: 123456789"
                   />
                 </div>
+                <p
+                  className={`mt-2 text-xs ${
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  }`}
+                >
+                  چت‌آیدی بله عددی است، نه username (با @).
+                </p>
               </div>
 
               <div>
@@ -696,6 +838,14 @@ export default function PrincipalSettingsPage() {
                     placeholder="Telegram API Key"
                   />
                 </div>
+                <p
+                  className={`mt-2 text-xs break-all ${
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  }`}
+                >
+                  آدرس وب‌هوک تلگرام:{" "}
+                  {botWebhookStatus.telegram.desired_url || telegramWebhookUrl}
+                </p>
               </div>
 
               <div>
@@ -729,6 +879,13 @@ export default function PrincipalSettingsPage() {
                     placeholder="Bale API Key"
                   />
                 </div>
+                <p
+                  className={`mt-2 text-xs break-all ${
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  }`}
+                >
+                  آدرس وب‌هوک بله: {botWebhookStatus.bale.desired_url || baleWebhookUrl}
+                </p>
               </div>
 
               <div>
@@ -794,6 +951,213 @@ export default function PrincipalSettingsPage() {
                     }`}
                     placeholder="@my_bale_bot"
                   />
+                </div>
+              </div>
+            </div>
+
+            <div
+              className={`rounded-xl border p-4 space-y-4 ${
+                theme === "dark"
+                  ? "bg-slate-900/40 border-slate-700/60"
+                  : "bg-slate-50 border-slate-200"
+              }`}
+            >
+              <h3
+                className={`text-sm sm:text-base font-semibold ${
+                  theme === "dark" ? "text-white" : "text-gray-900"
+                }`}
+              >
+                فعال‌سازی بات‌های مدرسه
+              </h3>
+
+              <p
+                className={`text-xs break-all ${
+                  theme === "dark" ? "text-slate-400" : "text-gray-600"
+                }`}
+              >
+                دامنه فعال مدرسه: {botWebhookStatus.baseDomain || publicAppUrl || "نامشخص"}
+              </p>
+              <div>
+                <label
+                  htmlFor="bot_base_domain"
+                  className={`block text-xs font-medium mb-2 ${
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  }`}
+                >
+                  دامنه اصلی سایت برای فعال‌سازی وب‌هوک
+                </label>
+                <input
+                  type="text"
+                  id="bot_base_domain"
+                  value={botBaseDomain}
+                  onChange={(e) => setBotBaseDomain(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none focus:ring-2 transition-all text-sm ${
+                    theme === "dark"
+                      ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
+                      : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
+                  }`}
+                  placeholder="مثال: https://school1.kama-ac.ir"
+                />
+              </div>
+
+              {botWebhookError && (
+                <p className="text-xs text-red-600">{botWebhookError}</p>
+              )}
+              {botWebhookSuccess && (
+                <p className="text-xs text-green-600">{botWebhookSuccess}</p>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                  className={`rounded-lg border p-4 ${
+                    theme === "dark"
+                      ? "bg-slate-800/50 border-slate-700"
+                      : "bg-white border-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p
+                        className={`font-medium ${
+                          theme === "dark" ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        بات تلگرام
+                      </p>
+                      <p
+                        className={`text-xs mt-1 ${
+                          theme === "dark" ? "text-slate-400" : "text-gray-600"
+                        }`}
+                      >
+                        وضعیت: {botWebhookStatus.telegram.enabled ? "فعال" : "غیرفعال"}
+                      </p>
+                      <p
+                        className={`text-[11px] mt-1 ${
+                          theme === "dark" ? "text-slate-500" : "text-gray-500"
+                        }`}
+                      >
+                        با این دکمه، توکن و آیدی‌های تلگرام مدیر هم ثبت می‌شود.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={
+                        botWebhookLoading ||
+                        botWebhookActionLoading.telegram ||
+                        !formData.telegram_api_key.trim() ||
+                        !botBaseDomain.trim()
+                      }
+                      onClick={() =>
+                        toggleBotWebhook("telegram", !botWebhookStatus.telegram.enabled)
+                      }
+                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white text-xs ${
+                        botWebhookStatus.telegram.enabled
+                          ? "bg-red-600 hover:bg-red-700"
+                          : "bg-emerald-600 hover:bg-emerald-700"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      <Power className="w-4 h-4" />
+                      {botWebhookActionLoading.telegram
+                        ? "در حال پردازش..."
+                        : botWebhookStatus.telegram.enabled
+                        ? "غیرفعال‌سازی"
+                        : "فعال‌سازی"}
+                    </button>
+                  </div>
+                  <p
+                    className={`text-[11px] mt-3 break-all ${
+                      theme === "dark" ? "text-slate-400" : "text-gray-600"
+                    }`}
+                  >
+                    {botWebhookStatus.telegram.desired_url || telegramWebhookUrl}
+                  </p>
+                  <p
+                    className={`text-[11px] mt-1 ${
+                      theme === "dark" ? "text-slate-500" : "text-gray-500"
+                    }`}
+                  >
+                    صف پیام: {botWebhookStatus.telegram.pending_update_count}
+                  </p>
+                  {botWebhookStatus.telegram.last_error_message && (
+                    <p className="text-[11px] mt-1 text-red-600">
+                      خطا: {botWebhookStatus.telegram.last_error_message}
+                    </p>
+                  )}
+                </div>
+
+                <div
+                  className={`rounded-lg border p-4 ${
+                    theme === "dark"
+                      ? "bg-slate-800/50 border-slate-700"
+                      : "bg-white border-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p
+                        className={`font-medium ${
+                          theme === "dark" ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        بات بله
+                      </p>
+                      <p
+                        className={`text-xs mt-1 ${
+                          theme === "dark" ? "text-slate-400" : "text-gray-600"
+                        }`}
+                      >
+                        وضعیت: {botWebhookStatus.bale.enabled ? "فعال" : "غیرفعال"}
+                      </p>
+                      <p
+                        className={`text-[11px] mt-1 ${
+                          theme === "dark" ? "text-slate-500" : "text-gray-500"
+                        }`}
+                      >
+                        با این دکمه، توکن و آیدی‌های بله مدیر هم ثبت می‌شود.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={
+                        botWebhookLoading ||
+                        botWebhookActionLoading.bale ||
+                        !formData.bale_api_key.trim() ||
+                        !botBaseDomain.trim()
+                      }
+                      onClick={() => toggleBotWebhook("bale", !botWebhookStatus.bale.enabled)}
+                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white text-xs ${
+                        botWebhookStatus.bale.enabled
+                          ? "bg-red-600 hover:bg-red-700"
+                          : "bg-emerald-600 hover:bg-emerald-700"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      <Power className="w-4 h-4" />
+                      {botWebhookActionLoading.bale
+                        ? "در حال پردازش..."
+                        : botWebhookStatus.bale.enabled
+                        ? "غیرفعال‌سازی"
+                        : "فعال‌سازی"}
+                    </button>
+                  </div>
+                  <p
+                    className={`text-[11px] mt-3 break-all ${
+                      theme === "dark" ? "text-slate-400" : "text-gray-600"
+                    }`}
+                  >
+                    {botWebhookStatus.bale.desired_url || baleWebhookUrl}
+                  </p>
+                  <p
+                    className={`text-[11px] mt-1 ${
+                      theme === "dark" ? "text-slate-500" : "text-gray-500"
+                    }`}
+                  >
+                    صف پیام: {botWebhookStatus.bale.pending_update_count}
+                  </p>
+                  {botWebhookStatus.bale.last_error_message && (
+                    <p className="text-[11px] mt-1 text-red-600">
+                      خطا: {botWebhookStatus.bale.last_error_message}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -4,6 +4,8 @@
 import pool from "./database";
 import { sendMessage, sendTypingAction, splitLongMessage, delay } from "./telegramService";
 import { sendChatToOpenAIStream } from "./aiService";
+import { getPrincipalAssistantStream } from "./messengerPrincipalAssistant";
+import { formatForMessenger } from "./messengerFormat";
 import type { User } from "./auth";
 
 /**
@@ -64,13 +66,21 @@ export async function getBotTokenForSchool(schoolId: string): Promise<string | n
     );
 
     if (result.rows.length === 0 || !result.rows[0].bot_token) {
+      const envToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+      if (envToken) {
+        console.warn(
+          `Using TELEGRAM_BOT_TOKEN from environment for school ${schoolId} (principal profile token missing)`
+        );
+        return envToken;
+      }
       return null;
     }
 
     return result.rows[0].bot_token;
   } catch (error) {
     console.error("Failed to get bot token for school:", error);
-    return null;
+    const envToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+    return envToken || null;
   }
 }
 
@@ -87,6 +97,11 @@ export async function processUserMessageWithAI(
   modelSource: "cloud" | "local" = "cloud"
 ): Promise<ReadableStream<Uint8Array>> {
   try {
+    if (user.role === "principal") {
+      // Keep messenger responses identical to Principal Assistant behavior.
+      return await getPrincipalAssistantStream(user, messageText);
+    }
+
     const messages = [{ role: "user" as const, content: messageText }];
 
     // Use the existing AI streaming function
@@ -143,12 +158,14 @@ export async function sendAIResponseToTelegram(
       fullResponse = "متأسفانه دستیار نتوانست پاسخی تولید کند. لطفاً دوباره تلاش کنید.";
     }
 
+    const formattedResponse = formatForMessenger(fullResponse);
+
     // Split if too long (Telegram max: 4096 chars)
-    const messages = splitLongMessage(fullResponse, 4000);
+    const messages = splitLongMessage(formattedResponse, 4000);
 
     // Send each message chunk with a small delay to avoid rate limiting
     for (const msg of messages) {
-      const response = await sendMessage(botToken, chatId, msg, "Markdown");
+      const response = await sendMessage(botToken, chatId, msg);
 
       if (!response.ok) {
         console.error(

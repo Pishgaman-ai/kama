@@ -595,9 +595,16 @@ export default function TeacherSettingsPage() {
                         ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
                         : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
                     }`}
-                    placeholder="@your_telegram_id"
+                    placeholder="مثال: 123456789"
                   />
                 </div>
+                <p
+                  className={`mt-2 text-xs ${
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  }`}
+                >
+                  چت‌آیدی تلگرام عددی است، نه username (با @).
+                </p>
               </div>
 
               <div>
@@ -628,9 +635,16 @@ export default function TeacherSettingsPage() {
                         ? "bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:ring-blue-500/50 focus:border-blue-500/50"
                         : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/20 focus:border-blue-500"
                     }`}
-                    placeholder="@your_bale_id"
+                    placeholder="مثال: 123456789"
                   />
                 </div>
+                <p
+                  className={`mt-2 text-xs ${
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  }`}
+                >
+                  چت‌آیدی بله عددی است، نه username (با @).
+                </p>
               </div>
             </div>
 

@@ -26,6 +26,9 @@ npm start              # Start production server
 npm run lint           # Run ESLint on the project
 ```
 
+### Testing
+The project does not currently have automated testing configured (jest/vitest). Manual testing guidance for authentication flows is available in `docs/TESTING.md`.
+
 ### Database & Data Management
 Database migrations are located in `database/migrations/`. The system uses PostgreSQL with connection pooling via the `pg` library.
 
@@ -65,7 +68,12 @@ src/
 │   │   └── parent/                # Parent dashboard (child progress)
 │   ├── api/
 │   │   ├── auth/                  # Authentication endpoints
-│   │   ├── principal/             # Principal-specific operations
+│   │   ├── principal/
+│   │   │   ├── ai-assistant/      # Principal AI assistant (anti-hallucination)
+│   │   │   ├── activities/        # Activity management
+│   │   │   ├── settings/
+│   │   │   │   └── bot-webhooks/  # Bot webhook configuration (GET/POST)
+│   │   │   └── ...
 │   │   ├── teacher/               # Teacher-specific operations
 │   │   ├── student/               # Student endpoints
 │   │   ├── parent/                # Parent endpoints
@@ -74,7 +82,11 @@ src/
 │   │   ├── ai/                    # AI service endpoints
 │   │   └── webhook/
 │   │       ├── bale/              # Bale messenger bot webhook
+│   │       │   ├── route.ts       # Global webhook handler
+│   │       │   └── [schoolId]/    # School-specific webhook endpoint
 │   │       └── telegram/          # Telegram messenger bot webhook
+│   │           ├── route.ts       # Global webhook handler
+│   │           └── [schoolId]/    # School-specific webhook endpoint
 │   ├── components/
 │   │   ├── AIChat/                # AI Chat system with hooks and types
 │   │   └── reports/               # Report generation components
@@ -95,6 +107,8 @@ src/
     ├── baleMessageHandler.ts      # Bale messenger message processing logic
     ├── telegramService.ts         # Telegram messenger bot API client
     ├── telegramMessageHandler.ts  # Telegram messenger message processing logic
+    ├── messengerFormat.ts         # Converts markdown to messenger-friendly text (tables, headings, inline markup)
+    ├── messengerPrincipalAssistant.ts  # Proxy for principal assistant API calls from messengers
     └── utils.ts                   # Shared helper functions
 ```
 
@@ -214,6 +228,11 @@ The system supports AI-powered messaging through Bale and Telegram messengers:
 - Both enforce multi-tenant isolation via `school_id`
 - Database schema supports both simultaneously
 
+**Message Formatting**:
+- Raw AI responses (markdown) are converted for messenger compatibility via `messengerFormat.ts`
+- Converts markdown tables to bullet lists, removes markdown syntax, handles Persian text
+- Applied automatically in both Bale and Telegram message handlers
+
 **Message Flow**:
 1. User sends message in messenger → 2. Webhook POST to `/api/webhook/{bale|telegram}` → 3. Identify user by chat_id → 4. Get bot token from principal's profile → 5. Send typing indicator → 6. Process with `sendChatToOpenAIStream()` → 7. Split response if needed → 8. Send back to messenger → 9. Always return 200 OK
 
@@ -232,20 +251,92 @@ The system supports AI-powered messaging through Bale and Telegram messengers:
 - Monitor logs for `[Bale Webhook]` or `[Telegram Webhook]` messages
 - Verify response time <5 seconds per message
 
-**For Future Messengers** (WhatsApp, Signal, etc.):
-Copy the pattern: Create service + handler + webhook route, use existing AI infrastructure.
+**Webhook Configuration API** (`/api/principal/settings/bot-webhooks`):
+- **GET**: Retrieves webhook configuration status for both Telegram and Bale
+  - Returns: desired URLs, token existence, current webhook URLs, pending updates, errors
+  - Used by frontend to display webhook setup status
+- **POST**: Manages webhook lifecycle (enable/disable) and configuration
+  - Parameters: `platform`, `enabled`, `token`, `chatId`, `botId`, `baseDomain`
+  - Operations: Token validation, webhook registration/deletion, state persistence
+  - Persists credentials to principal's profile JSONB
+  - Distributes token to all teachers/students/parents in school
 
-### Principal AI Assistant - Anti-Hallucination Patterns
-The Principal Assistant uses strict prompts to prevent AI hallucination:
-1. **Function Call Examples**: Always provide explicit Persian examples:
+**Dynamic Webhook Routes**:
+- Global: `/api/webhook/{bale|telegram}` - Fallback for single-school deployments
+- School-specific: `/api/webhook/{bale|telegram}/[schoolId]` - Multi-tenant webhook endpoints
+- Each school has its own isolated webhook URL: `https://domain.com/api/webhook/telegram/{schoolId}`
+
+**Helper Utilities**:
+1. **`messengerFormat.ts`** - Markdown to messenger conversion
+   - Strips inline markdown (`**bold**`, `*italic*`, `[links]`)
+   - Converts markdown tables → bullet lists for readability on mobile
+   - Converts headings (#) → emoji headers (🔹)
+   - Preserves Persian text structure
+   - Example: `# Title` → `🔹 Title`, `| Header | Value |` → `• Header: Value`
+
+2. **`messengerPrincipalAssistant.ts`** - Principal assistant proxy
+   - Bridges messenger handlers to principal AI assistant API
+   - Returns ReadableStream for streaming responses
+   - Tries multiple candidate base URLs for reliability
+   - Handles local development, staging, and production deployments
+   - Includes comprehensive error handling with fallback messages
+
+**Settings UI Integration**:
+- Principal Settings → Profile tab includes bot credential inputs
+- Teacher/Student settings automatically synced from principal token
+- Settings pages already have UI for entering:
+  - Bot API token
+  - Bot ID (for identification)
+  - Chat ID (principal's chat ID with bot)
+  - Website URL (for webhook domain)
+
+**For Future Messengers** (WhatsApp, Signal, etc.):
+Copy the pattern:
+1. Create `src/lib/{messenger}Service.ts` - API client
+2. Create `src/lib/{messenger}MessageHandler.ts` - Business logic
+3. Create `src/types/{messenger}.ts` - TypeScript interfaces
+4. Create `src/app/api/webhook/{messenger}/[schoolId]/route.ts` - Webhook endpoint
+5. Add settings UI inputs for credentials (Settings page already prepared)
+6. Reuse `messengerFormat.ts`, `messengerPrincipalAssistant.ts`, and `sendChatToOpenAIStream()`
+
+### Principal AI Assistant - Anti-Hallucination & Class Analytics
+The Principal Assistant provides intelligent queries with built-in validation to prevent hallucination:
+
+**Supported Query Types**:
+1. **Student-Level Queries** (e.g., "وضعیت علی احمدی در ریاضی")
+   - Automatically identifies student and subject
+   - Retrieves: enrolled classes, activities, grades, performance metrics
+   - Validates: student enrollment, subject reference, class membership
+
+2. **Class-Level Queries** (NEW - e.g., "عملکرد کلاس نهم الف")
+   - Automatically identifies class name from natural language
+   - Retrieves: class performance metrics, KPIs, student averages
+   - Supports: grade levels, class sections, academic year filtering
+   - Uses `getClassPerformanceForPrincipal()` for analytics
+
+3. **Search Functions**:
+   - `searchStudentsForPrincipal()` - Fuzzy search with limit
+   - `searchClassesForPrincipal()` - Find classes by name/grade
+   - `getStudentIdentityForPrincipal()` - Get student details with classes
+   - `getStudentActivitiesForPrincipal()` - Get activities and grades
+   - `getSubjectNamesForPrincipal()` - Autocomplete for subjects
+
+**Anti-Hallucination Techniques**:
+1. **Explicit Persian Examples**: Provide function call examples in Persian
    ```
    "وضعیت علی احمدی در ریاضی" → student_name: "علی احمدی", subject_name: "ریاضی"
    ```
-2. **Prompt Structure**: Use clear sections with **DATABASE FACTS**, **EXACT DATA - DO NOT MODIFY**, and **Anti-Hallucination Rules**
-3. **Validation Functions**: Check student enrollment, validate subject references, confirm class membership before using AI
-4. **Location**: `src/app/api/principal/ai-assistant/route.ts` and `src/lib/principalAssistantStudentData.ts`
+2. **Clear Prompt Sections**: **DATABASE FACTS**, **EXACT DATA - DO NOT MODIFY**, **Anti-Hallucination Rules**
+3. **Intent Detection**: Functions to identify question type:
+   - `isStudentQuestion()` - Student-level queries
+   - `isClassQuestion()` - Class-level queries
+4. **Data Validation**: Verify results before passing to LLM
+5. **Streaming Response**: Real-time updates for long-running queries
 
-Learn more: docs/PRINCIPAL_ASSISTANT_IMPROVEMENTS.md
+**Location**:
+- Route: `src/app/api/principal/ai-assistant/route.ts`
+- Data functions: `src/lib/principalAssistantStudentData.ts`
+- Documentation: `docs/PRINCIPAL_ASSISTANT_IMPROVEMENTS.md`
 
 ### Chat Component System
 Located in `src/app/components/AIChat/`:
@@ -321,6 +412,57 @@ The system supports importing/exporting activities in bulk via Excel:
 - **Operations**: Support both insert and update modes
 - Learn more: docs/BULK_ACTIVITIES_GUIDE.md
 
+### Managing Messenger Bot Webhooks
+To configure and manage Bale/Telegram bots from the backend or frontend:
+
+1. **Get Current Webhook Status** (GET `/api/principal/settings/bot-webhooks`)
+   ```typescript
+   const response = await fetch('/api/principal/settings/bot-webhooks');
+   const data = await response.json();
+   // Returns: { telegram: {desired_url, token_exists, enabled, current_url, ...}, bale: {...} }
+   ```
+
+2. **Enable/Disable Webhooks** (POST `/api/principal/settings/bot-webhooks`)
+   ```typescript
+   const response = await fetch('/api/principal/settings/bot-webhooks', {
+     method: 'POST',
+     body: JSON.stringify({
+       platform: 'telegram', // or 'bale'
+       enabled: true,
+       token: 'bot_token_here',  // Optional if already stored
+       chatId: 'principal_chat_id',  // Optional - principal's chat ID
+       botId: 'bot_id_number',  // Optional - used for identification
+       baseDomain: 'https://myschool.com',  // Optional - for custom domains
+     })
+   });
+   ```
+
+3. **Key Points**
+   - Webhooks are school-specific: `/api/webhook/{platform}/{schoolId}`
+   - Principal stores bot token in JSONB profile field
+   - Token is automatically shared with all teachers/students/parents
+   - Webhook can be registered/unregistered via the API
+   - Status checking includes pending updates and error messages
+
+### Converting Markdown for Messengers
+When sending AI responses to messengers, use the formatter:
+
+```typescript
+import { formatForMessenger } from '@/lib/messengerFormat';
+
+// Convert markdown AI response to messenger-friendly format
+const markdown = '# Title\n\n**Bold** and *italic*\n\n| Header | Value |\n|--------|-------|\n| A | 1 |';
+const friendlyText = formatForMessenger(markdown);
+// Result: "🔹 Title\n\nBold and italic\n\n• Header: Value"
+```
+
+The formatter:
+- Converts headings to emoji headers (🔹)
+- Strips markdown syntax while preserving text
+- Converts tables to bullet lists (mobile-friendly)
+- Handles Persian text correctly
+- Removes excessive whitespace
+
 ## Important Configuration Files
 
 - `.env` - Environment variables (API keys, DB connection string, email config)
@@ -328,6 +470,42 @@ The system supports importing/exporting activities in bulk via Excel:
 - `next.config.js` - Next.js configuration (Turbopack settings, image optimization)
 - `tailwind.config.ts` - Tailwind CSS configuration with Persian font setup
 - `database/migrations/` - SQL migration files for schema changes
+
+## Environment Variables for Messenger Bots
+
+When setting up messenger bot webhooks, the following environment variables are used to construct webhook URLs:
+
+```env
+# Primary public URL (used for webhook registration with Telegram/Bale)
+NEXT_PUBLIC_APP_URL=https://myapp.com
+
+# Internal URL (used for inter-service communication, optional fallback)
+INTERNAL_APP_URL=http://127.0.0.1:3000
+
+# Application port (used in fallback URL construction)
+PORT=3000
+```
+
+**Webhook URL Construction Priority**:
+1. School's `website_url` from database (if configured)
+2. `NEXT_PUBLIC_APP_URL` environment variable
+3. Request origin header (`request.nextUrl.origin`)
+4. Fallback to `http://localhost:3000`
+
+**Example Webhook URLs**:
+- Telegram: `https://myapp.com/api/webhook/telegram/{schoolId}`
+- Bale: `https://myapp.com/api/webhook/bale/{schoolId}`
+
+**For Development with ngrok**:
+```bash
+# Start ngrok tunnel
+ngrok http 3000
+
+# Update .env with ngrok URL
+NEXT_PUBLIC_APP_URL=https://xxx-yyy-zzz.ngrok-free.app
+```
+
+Then register this URL with Telegram/Bale API for webhook configuration.
 
 ## Debugging & Troubleshooting
 
@@ -351,6 +529,35 @@ The system supports importing/exporting activities in bulk via Excel:
 - Verify all DB queries use proper types from `lib/database.ts`
 - Use `types.ts` files in feature directories for local types
 
+### Messenger Bot Issues
+
+**Webhook Not Registering**:
+- Verify bot token is correct: `GET /api/principal/settings/bot-webhooks`
+- Check `NEXT_PUBLIC_APP_URL` is publicly accessible
+- For local development, use ngrok: `ngrok http 3000`
+- Verify webhook URL is correct format: `https://domain.com/api/webhook/{platform}/{schoolId}`
+- Check server logs for `[Bale Webhook]` or `[Telegram Webhook]` messages
+
+**Messages Not Being Received**:
+- Verify webhook is enabled: GET `/api/principal/settings/bot-webhooks`
+- Check `pending_update_count` - if >0, messages are queued
+- Check `last_error_message` field for API errors
+- Ensure principal's `chat_id` is stored in profile (sent on first user interaction)
+- Verify school_id in user's profile matches request
+
+**AI Response Issues**:
+- Check principal AI assistant endpoint: `/api/principal/ai-assistant`
+- Verify `PASSWORD_ENCRYPTION_KEY` is set in `.env` (used for auth header)
+- Check `messengerPrincipalAssistant.ts` log for URL retry attempts
+- Verify role-based prompts are loaded in `/lib/aiPrompts.ts`
+- Check if response is being formatted: use `formatForMessenger()` from `messengerFormat.ts`
+
+**Multi-Server Deployments**:
+- Ensure all servers share same database for JSONB profile synchronization
+- Each server should have same `NEXT_PUBLIC_APP_URL` for webhook URLs
+- Monitor for duplicate message processing (webhook delivered to multiple servers)
+- Consider server-specific webhook acknowledgment logic if needed
+
 ## Performance Considerations
 
 - **Turbopack**: Use `npm run dev:turbo` for faster builds
@@ -371,25 +578,36 @@ The system supports importing/exporting activities in bulk via Excel:
 
 ## Documentation
 
-Comprehensive documentation is available in `/docs/`:
+### In `/docs/` Directory
+Comprehensive documentation is available for system architecture and features:
 - `DATABASE_STRUCTURE.md` - Full schema documentation with bulk activities section
 - `AUTHENTICATION.md` - Auth system details and login methods
 - `CLASS_MANAGEMENT.md` - Class and academic structure
 - `EDUCATIONAL_ACTIVITIES.md` - Activity types and workflows
 - `BULK_ACTIVITIES_GUIDE.md` - Import/export and bulk management of activities
-- `PRINCIPAL_ASSISTANT_IMPROVEMENTS.md` - AI anti-hallucination patterns
-- `BALE_BOT_INTEGRATION.md` - Bale messenger bot setup and troubleshooting ⭐ **New**
-- `TELEGRAM_BOT_INTEGRATION.md` - Telegram messenger bot setup and troubleshooting ⭐ **New**
+- `PRINCIPAL_ASSISTANT_IMPROVEMENTS.md` - AI anti-hallucination patterns and prompt engineering
+- `BALE_BOT_INTEGRATION.md` - Bale messenger bot setup and troubleshooting ⭐ **Recent**
+- `TELEGRAM_BOT_INTEGRATION.md` - Telegram messenger bot setup and troubleshooting ⭐ **Recent**
 - `SUBJECTS_TO_LESSONS_MIGRATION.md` - Schema migration documentation
 - And 20+ other detailed guides in Persian and English
 
-Also available in root directory:
+### In Root Directory
+Quick-reference guides and implementation details:
 - `BALE_DEPLOYMENT_CHECKLIST.md` - 5-minute Bale bot deployment guide
 - `BALE_IMPLEMENTATION_SUMMARY.md` - Bale bot implementation overview
 - `TELEGRAM_DEPLOYMENT_CHECKLIST.md` - 5-minute Telegram bot deployment guide
 - `TELEGRAM_IMPLEMENTATION_SUMMARY.md` - Telegram bot implementation overview
+- `SETUP_INSTRUCTIONS.md` - Development environment setup
+- `EXCEL_EXPORT_FEATURE.md` - Excel export system documentation
+- `MARKDOWN_AI_GUIDE.md` - AI prompt and markdown handling
+- `PERFORMANCE_IMPROVEMENTS.md` - Performance optimization notes
+- `AI_SETUP_README.md` - AI service configuration
 
-Refer to these documents for specific domain knowledge before making changes. Pay special attention to the **bolded** documents for recent feature implementations (messenger bots).
+### Development Reference
+- **Start here**: Read `CLAUDE.md` (this file) for project overview and architecture
+- **Before coding**: Check relevant documentation in `/docs/` for domain knowledge
+- **Troubleshooting**: See "Debugging & Troubleshooting" section below
+- **Recent changes**: Review **bolded** documents above for latest feature implementations
 
 ## Common Pitfalls & Solutions
 

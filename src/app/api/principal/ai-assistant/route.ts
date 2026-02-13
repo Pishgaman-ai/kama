@@ -12,9 +12,11 @@ import logger from "@/lib/logger";
 import { getUserById } from "@/lib/auth";
 import { getRolePromptConfig } from "@/lib/aiPrompts";
 import {
+  getClassPerformanceForPrincipal,
   getStudentActivitiesForPrincipal,
   getStudentIdentityForPrincipal,
   getSubjectNamesForPrincipal,
+  searchClassesForPrincipal,
   searchStudentsForPrincipal,
 } from "@/lib/principalAssistantStudentData";
 
@@ -71,6 +73,12 @@ function normalizeText(text: string) {
     .replace(/[ك]/g, "ک")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function isChatMessage(value: unknown): value is { role: string; content: string } {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.role === "string" && typeof row.content === "string";
 }
 
 function isStudentQuestion(text: string) {
@@ -130,6 +138,39 @@ function extractSubjectName(text: string) {
     if (match && match[1]) {
       return match[1].trim();
     }
+  }
+
+  return null;
+}
+
+function isClassQuestion(text: string) {
+  const normalized = normalizeText(text);
+  if (!/کلاس/i.test(normalized)) return false;
+
+  const classIntent =
+    /(وضعیت|عملکرد|شاخص|کی\s*پی\s*آی|kpi|آموزش|یادگیری|پیشرفت|میانگین|نمره|ارزیابی)/i.test(
+      normalized
+    );
+
+  return classIntent || /عملکرد\s+کلاس/i.test(normalized);
+}
+
+function extractClassName(text: string) {
+  const normalized = normalizeText(text);
+  const patterns = [
+    /(?:وضعیت|عملکرد|شاخص(?:‌|\s*)ها?)\s+کلاس\s+(.+?)(?=\s+(?:چطور|چگونه|چه|در|از|است|هست|را|برای|با|$))/i,
+    /کلاس\s+(.+?)(?=\s+(?:چطور|چگونه|چه|در|از|است|هست|را|برای|با|$))/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match?.[1]) continue;
+    const cleaned = match[1]
+      .replace(/[^\p{L}\p{N}\s\-]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!cleaned) continue;
+    return cleaned.length > 40 ? cleaned.slice(0, 40).trim() : cleaned;
   }
 
   return null;
@@ -212,7 +253,7 @@ function toShamsiDate(gregorianDate: string | null): string {
     const shamsiDay = String(jd).padStart(2, '0');
 
     return toPersianDigits(`${shamsiYear}/${shamsiMonth}/${shamsiDay}`);
-  } catch (error) {
+  } catch {
     return gregorianDate;
   }
 }
@@ -374,14 +415,18 @@ function buildStudentInfoHeader(student: {
 }
 
 function buildStudentListMessage(
-  students: Array<{ name: string; grade_level: string; classes: any[] }>
+  students: Array<{
+    name: string;
+    grade_level: string;
+    classes: Array<{ name?: string | null }>;
+  }>
 ) {
   return students
     .slice(0, 5)
     .map((student, index) => {
       const cls = Array.isArray(student.classes) && student.classes.length > 0
         ? ` (${student.classes
-            .map((cc: any) => cc.name)
+            .map((cc) => cc.name)
             .filter(Boolean)
             .join("، ")})`
         : "";
@@ -391,6 +436,154 @@ function buildStudentListMessage(
       return `${index + 1}. ${student.name} - ${grade}${cls}`;
     })
     .join("\n");
+}
+
+function buildClassListMessage(
+  classes: Array<{
+    name: string;
+    grade_level: string | null;
+    section: string | null;
+    academic_year: string | null;
+  }>
+) {
+  return classes
+    .slice(0, 7)
+    .map((cls, index) => {
+      const grade = cls.grade_level
+        ? `پایه ${toPersianDigits(cls.grade_level)}`
+        : "پایه نامشخص";
+      const section = cls.section ? ` - ${cls.section}` : "";
+      const year = cls.academic_year ? ` (${cls.academic_year})` : "";
+      return `${index + 1}. ${cls.name}${section} - ${grade}${year}`;
+    })
+    .join("\n");
+}
+
+function buildClassInfoHeader(classInfo: {
+  name: string;
+  grade_level: string | null;
+  section: string | null;
+  academic_year: string | null;
+}) {
+  const grade = classInfo.grade_level
+    ? `پایه ${toPersianDigits(classInfo.grade_level)}`
+    : "نامشخص";
+  return [
+    "## مشخصات کلاس",
+    "| مشخصه | مقدار |",
+    "| --- | --- |",
+    `| نام کلاس | ${classInfo.name} |`,
+    `| پایه | ${grade} |`,
+    `| بخش | ${classInfo.section || "—"} |`,
+    `| سال تحصیلی | ${classInfo.academic_year || "—"} |`,
+    "",
+  ].join("\n");
+}
+
+function buildClassKpiTable(summary: {
+  student_count: number;
+  teacher_count: number;
+  activities_count: number;
+  average_activity_score: number | null;
+  average_grade_percent: number | null;
+  exams_count: number;
+  published_exams_count: number;
+  active_exams_count: number;
+  last_activity_date: string | null;
+}) {
+  const avgActivity =
+    summary.average_activity_score === null
+      ? "—"
+      : toPersianDigits(summary.average_activity_score.toFixed(2));
+  const avgGrade =
+    summary.average_grade_percent === null
+      ? "—"
+      : `${toPersianDigits(summary.average_grade_percent.toFixed(2))}%`;
+
+  return [
+    "| شاخص کلیدی | مقدار |",
+    "| --- | --- |",
+    `| تعداد دانش‌آموزان کلاس | ${toPersianDigits(String(summary.student_count))} |`,
+    `| تعداد معلمان کلاس | ${toPersianDigits(String(summary.teacher_count))} |`,
+    `| تعداد رکوردهای فعالیت آموزشی | ${toPersianDigits(String(summary.activities_count))} |`,
+    `| میانگین نمره فعالیت‌ها | ${avgActivity} |`,
+    `| میانگین درصد نمرات ثبت شده | ${avgGrade} |`,
+    `| تعداد آزمون‌ها | ${toPersianDigits(String(summary.exams_count))} |`,
+    `| آزمون‌های منتشرشده | ${toPersianDigits(String(summary.published_exams_count))} |`,
+    `| آزمون‌های فعال | ${toPersianDigits(String(summary.active_exams_count))} |`,
+    `| تاریخ آخرین فعالیت | ${formatDate(summary.last_activity_date)} |`,
+  ].join("\n");
+}
+
+function buildClassSubjectSummaryTable(
+  subjects: Array<{
+    subject: string | null;
+    activity_count: number;
+    average_score: number | null;
+    students_covered: number;
+    teacher_name: string | null;
+  }>
+) {
+  if (!subjects.length) return "";
+  return [
+    "| درس | تعداد فعالیت | میانگین نمره | پوشش دانش‌آموز | معلم درس |",
+    "| --- | --- | --- | --- | --- |",
+    ...subjects.map((item) => {
+      const avg =
+        item.average_score === null
+          ? "—"
+          : toPersianDigits(item.average_score.toFixed(2));
+      return `| ${item.subject || "نامشخص"} | ${toPersianDigits(String(item.activity_count))} | ${avg} | ${toPersianDigits(String(item.students_covered))} | ${item.teacher_name || "نامشخص"} |`;
+    }),
+  ].join("\n");
+}
+
+function buildClassPerSubjectEvaluation(
+  subjects: Array<{
+    subject: string | null;
+    activity_count: number;
+    average_score: number | null;
+    teacher_name: string | null;
+  }>
+) {
+  if (!subjects.length) {
+    return "## ارزیابی درس به درس کلاس\nداده‌ای برای تحلیل درس‌ها ثبت نشده است.";
+  }
+
+  const lines = subjects.map((item, index) => {
+    const avg =
+      item.average_score === null
+        ? "—"
+        : toPersianDigits(item.average_score.toFixed(2));
+    return `${index + 1}. **${item.subject || "نامشخص"}**: میانگین نمره **${avg}**، تعداد فعالیت **${toPersianDigits(String(item.activity_count))}**، معلم درس: **${item.teacher_name || "نامشخص"}**`;
+  });
+
+  return ["## ارزیابی درس به درس کلاس", ...lines].join("\n");
+}
+
+function buildClassRecentActivitiesTable(
+  activities: Array<{
+    activity_date: string | null;
+    activity_type: string;
+    activity_title: string;
+    subject_name: string | null;
+    average_score: number | null;
+    records_count: number;
+    students_count: number;
+  }>
+) {
+  if (!activities.length) return "";
+  return [
+    "| تاریخ | نوع | عنوان | درس | میانگین نمره | رکورد | دانش‌آموز پوشش‌داده‌شده |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
+    ...activities.map((item) => {
+      const avg =
+        item.average_score === null
+          ? "—"
+          : toPersianDigits(item.average_score.toFixed(2));
+      return `| ${formatDate(item.activity_date)} | ${getActivityTypeFarsi(item.activity_type)} | ${item.activity_title} | ${item.subject_name || "—"} | ${avg} | ${toPersianDigits(String(item.records_count))} | ${toPersianDigits(String(item.students_count))} |`;
+    }),
+  ].join("\n");
 }
 
 function resolveSubjectByInput(subjectInput: string, subjects: string[]) {
@@ -513,6 +706,90 @@ EXAMPLES:
   }
 }
 
+async function runClassFunctionCall(params: {
+  model: string;
+  apiKey: string;
+  baseURL?: string;
+  userQuestion: string;
+}) {
+  const client = new OpenAI({
+    apiKey: params.apiKey,
+    baseURL: params.baseURL,
+  });
+
+  const toolResponse = await client.chat.completions.create({
+    model: params.model,
+    temperature: 0,
+    messages: [
+      {
+        role: "system",
+        content: `You are a precise extractor for school class performance requests in Persian.
+Extract ONLY class_name exactly from user text. Do not guess.
+
+RULES:
+1. Return only class name phrase that user mentions after/around "کلاس"
+2. Keep section/grade identifiers if present (e.g., "هفتم الف", "دهم-ب")
+3. If class name is not present, return empty string
+
+EXAMPLES:
+- "عملکرد کلاس هفتم الف چطور است؟" -> class_name: "هفتم الف"
+- "وضعیت کلاس دهم-ب در آموزش" -> class_name: "دهم-ب"
+- "شاخص های کلاس ریاضی ۱۱/الف را بده" -> class_name: "ریاضی ۱۱/الف"`,
+      },
+      {
+        role: "user",
+        content: params.userQuestion,
+      },
+    ],
+    tools: [
+      {
+        type: "function",
+        function: {
+          name: "get_class_performance_report",
+          description:
+            "Extract class name for educational KPI report query.",
+          parameters: {
+            type: "object",
+            properties: {
+              class_name: {
+                type: "string",
+                description:
+                  "Class name in Persian exactly as user mentioned it.",
+              },
+            },
+            required: ["class_name"],
+            additionalProperties: false,
+          },
+        },
+      },
+    ],
+    tool_choice: {
+      type: "function",
+      function: { name: "get_class_performance_report" },
+    },
+  });
+
+  const toolCall = toolResponse.choices[0]?.message?.tool_calls?.[0];
+  if (
+    !toolCall ||
+    toolCall.type !== "function" ||
+    toolCall.function.name !== "get_class_performance_report"
+  ) {
+    return null;
+  }
+
+  try {
+    const args = JSON.parse(toolCall.function.arguments || "{}") as {
+      class_name?: string;
+    };
+    return {
+      className: (args.class_name || "").trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const requestId = Math.random().toString(36).slice(2, 8);
@@ -540,6 +817,13 @@ export async function POST(request: NextRequest) {
 
     const isDev = process.env.NODE_ENV !== "production";
     const devUserId = isDev ? request.headers.get("x-dev-user-id") : null;
+    const internalUserId = request.headers.get("x-messenger-user-id");
+    const internalAuth = request.headers.get("x-messenger-auth");
+    const internalSecret = process.env.PASSWORD_ENCRYPTION_KEY;
+    const isInternalTrusted =
+      Boolean(internalUserId) &&
+      Boolean(internalSecret) &&
+      internalAuth === internalSecret;
     const responseHeaders = {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -548,11 +832,13 @@ export async function POST(request: NextRequest) {
 
     const authStart = performance.now();
     const sessionCookie = request.cookies.get("user_session");
-    if (!sessionCookie && !devUserId) {
+    if (!sessionCookie && !devUserId && !isInternalTrusted) {
       return NextResponse.json({ error: "غیر مجاز" }, { status: 401 });
     }
 
-    const userSession = devUserId
+    const userSession = isInternalTrusted
+      ? { id: internalUserId }
+      : devUserId
       ? { id: devUserId }
       : JSON.parse(sessionCookie!.value);
     const user = await getUserById(userSession.id);
@@ -567,22 +853,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "غیر مجاز" }, { status: 403 });
     }
 
-    const nationalId = user.national_id;
-    if (!nationalId) {
-      return NextResponse.json(
-        {
-          error:
-            "برای استفاده از دستیار هوشمند، لطفاً کد ملی خود را در پروفایل کاربری تنظیم کنید",
-        },
-        { status: 400 }
-      );
-    }
-
     const parseStart = performance.now();
     const { messages } = await request.json();
     markTiming("parse_ms", parseStart);
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "پیام یافت نشد" }, { status: 400 });
+    }
+    const normalizedInputMessages = messages.filter(isChatMessage);
+    if (normalizedInputMessages.length === 0) {
+      return NextResponse.json({ error: "فرمت پیام نامعتبر است" }, { status: 400 });
     }
 
     const modelSource: LanguageModelSource =
@@ -603,9 +882,9 @@ export async function POST(request: NextRequest) {
     }
 
     const roleConfig = getRolePromptConfig("principal");
-    const latestUserMessage = getLatestUserMessage(messages);
+    const latestUserMessage = getLatestUserMessage(normalizedInputMessages);
     logStep("request_parsed", { has_user_message: Boolean(latestUserMessage) });
-    const assistantRules = `
+const assistantRules = `
 ## قوانین پاسخ‌دهی به سوالات درباره دانش‌آموزان
 
 ### 1. شناسایی دانش‌آموز
@@ -644,6 +923,26 @@ export async function POST(request: NextRequest) {
 - ✅ "طبق جدول، میانگین نمرات: ۱۵.۵"
 - ❌ "به نظر می‌رسد علی احمدی در ریاضی خوب است" (بدون داده)
 - ❌ "احتمالاً در آزمون بعدی بهتر می‌شود" (حدس)
+`;
+
+    const classAssistantRules = `
+## قوانین پاسخ‌دهی به سوالات درباره عملکرد کلاس
+
+### 1. شناسایی کلاس
+- ابتدا نام کلاس را دقیق شناسایی کن
+- اگر چند کلاس مشابه پیدا شد، از کاربر پایه/بخش/سال تحصیلی را بپرس
+- اگر کلاس پیدا نشد، درخواست اصلاح نام کلاس بده
+
+### 2. شاخص‌های کلیدی عملکرد (KPI)
+- فقط از شاخص‌های واقعی دریافت شده از پایگاه داده استفاده کن
+- شاخص‌ها: تعداد دانش‌آموز، تعداد معلم، تعداد فعالیت، میانگین نمره فعالیت، میانگین درصد نمرات، وضعیت آزمون‌ها
+- اگر داده‌ای موجود نبود، صریحاً ذکر کن «داده کافی ثبت نشده است»
+
+### 3. Anti-Hallucination
+❌ عدد یا تاریخ ساختگی تولید نکن
+❌ نام درس یا فعالیتی خارج از جداول ننویس
+❌ تحلیل بدون ارجاع به داده نده
+✅ فقط بر اساس جداول و context واقعی تحلیل کن
 `;
 
 
@@ -686,9 +985,9 @@ export async function POST(request: NextRequest) {
       DEFAULT_ENABLE_NARRATIVE
     );
 
-    const chatMessages: BaseMessage[] = messages
-      .filter((msg: any) => msg.role !== "system")
-      .map((msg: any) =>
+    const chatMessages: BaseMessage[] = normalizedInputMessages
+      .filter((msg) => msg.role !== "system")
+      .map((msg) =>
         msg.role === "assistant"
           ? new AIMessage(msg.content)
           : new HumanMessage(msg.content)
@@ -702,19 +1001,261 @@ export async function POST(request: NextRequest) {
       });
     };
 
+    const normalizedQuestion = userQuestion ? normalizeText(userQuestion) : "";
     const preExtractedStudentName = userQuestion
       ? extractStudentName(userQuestion)
+      : null;
+    const preExtractedClassName = userQuestion
+      ? extractClassName(userQuestion)
       : null;
     const hasLessonPhrase = userQuestion
       ? /(?:در|توی|تو)\s+درس/i.test(normalizeText(userQuestion))
       : false;
+    const hasClassPhrase = /کلاس/i.test(normalizedQuestion);
+    const hasStudentKeyword = /دانش\s*آموز/i.test(normalizedQuestion);
 
-    if (
+    const isStudentLikeQuestion = Boolean(
       userQuestion &&
-      (isStudentQuestion(userQuestion) ||
-        Boolean(preExtractedStudentName) ||
-        hasLessonPhrase)
-    ) {
+        (isStudentQuestion(userQuestion) ||
+          Boolean(preExtractedStudentName) ||
+          hasLessonPhrase)
+    );
+    const isClassLikeQuestion = Boolean(
+      userQuestion &&
+        (isClassQuestion(userQuestion) ||
+          Boolean(preExtractedClassName) ||
+          hasClassPhrase) &&
+        !hasStudentKeyword
+    );
+    logStep("intent_detection", {
+      has_student_keyword: hasStudentKeyword,
+      has_class_phrase: hasClassPhrase,
+      pre_student_name: preExtractedStudentName || null,
+      pre_class_name: preExtractedClassName || null,
+      is_student_like: isStudentLikeQuestion,
+      is_class_like: isClassLikeQuestion,
+    });
+
+    if (userQuestion && isClassLikeQuestion) {
+      logStep("class_question_detected");
+      const dbStart = performance.now();
+      const functionCallStart = performance.now();
+      const functionArgs = await runClassFunctionCall({
+        model: chosenModel,
+        apiKey:
+          modelSource === "local"
+            ? process.env.LOCAL_AI_API_KEY || "local-ai"
+            : process.env.OPENAI_API_KEY!,
+        baseURL: modelSource === "local" ? LOCAL_AI_BASE_URL : undefined,
+        userQuestion,
+      });
+      markTiming("class_function_call_ms", functionCallStart);
+      logStep("class_function_call_completed", {
+        duration_ms: timings.class_function_call_ms,
+      });
+
+      const classNameFromFunction = functionArgs?.className || "";
+      const fallbackClassName = preExtractedClassName || "";
+      const resolvedClassName = fallbackClassName || classNameFromFunction;
+
+      logStep("class_name_resolved", {
+        from_regex: fallbackClassName || null,
+        from_function: classNameFromFunction || null,
+        final_value: resolvedClassName || null,
+      });
+
+      if (!resolvedClassName) {
+        return respondWithText(
+          "برای بررسی عملکرد کلاس، لطفاً نام کلاس را دقیق وارد کنید (مثلاً: هفتم الف یا دهم-ب).",
+          "missing_class_name"
+        );
+      }
+
+      const searchStart = performance.now();
+      const classCandidates = await searchClassesForPrincipal({
+        schoolId: user.school_id,
+        name: resolvedClassName,
+        limit: 10,
+      });
+      markTiming("class_search_ms", searchStart);
+      logStep("class_search_completed", {
+        duration_ms: timings.class_search_ms,
+        candidates: classCandidates.length,
+      });
+
+      if (!classCandidates.length) {
+        return respondWithText(
+          "کلاسی با این نام در مدرسه پیدا نشد. لطفاً نام کلاس را با پایه/بخش دقیق‌تر وارد کنید.",
+          "class_not_found"
+        );
+      }
+
+      if (classCandidates.length > 1) {
+        return respondWithText(
+          `چند کلاس مشابه پیدا شد. لطفاً دقیق‌تر مشخص کنید:\n${buildClassListMessage(
+            classCandidates
+          )}`,
+          "multiple_classes"
+        );
+      }
+
+      const classPerfStart = performance.now();
+      const classPerformance = await getClassPerformanceForPrincipal({
+        schoolId: user.school_id,
+        classId: classCandidates[0].id,
+        recentLimit: 12,
+      });
+      markTiming("class_performance_ms", classPerfStart);
+      markTiming("db_ms", dbStart);
+      logStep("class_performance_loaded", {
+        duration_ms: timings.class_performance_ms,
+      });
+
+      if (!classPerformance) {
+        return respondWithText(
+          "اطلاعات عملکردی برای این کلاس در دسترس نیست.",
+          "class_performance_not_found"
+        );
+      }
+
+      const classInfoHeader = buildClassInfoHeader(classPerformance.classInfo);
+      const classKpiTable = buildClassKpiTable(classPerformance.summary);
+      const classSubjectTable = buildClassSubjectSummaryTable(
+        classPerformance.subject_summaries
+      );
+      const classPerSubjectEvaluation = buildClassPerSubjectEvaluation(
+        classPerformance.subject_summaries
+      );
+      const classRecentActivitiesTable = buildClassRecentActivitiesTable(
+        classPerformance.recent_activities
+      );
+
+      const dataContext = {
+        class: classPerformance.classInfo,
+        summary: classPerformance.summary,
+        subject_summaries: classPerformance.subject_summaries,
+      };
+
+      const prefix = [
+        classInfoHeader,
+        "## شاخص‌های کلیدی عملکرد کلاس",
+        classKpiTable,
+        classSubjectTable ? "\n## عملکرد درس‌ها\n" + classSubjectTable : "",
+        classPerSubjectEvaluation,
+        classRecentActivitiesTable
+          ? "\n## فعالیت‌های اخیر کلاس\n" + classRecentActivitiesTable
+          : "",
+        "\n## جمع‌بندی تحلیلی\n",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(encoder.encode(prefix));
+
+          if (!enableNarrative) {
+            logStep("class_narrative_skipped");
+            logTimings("class_stream_completed_no_narrative");
+            controller.close();
+            return;
+          }
+
+          logStep("class_narrative_start", {
+            timeout_ms: narrativeTimeoutMs,
+          });
+          const modelStart = performance.now();
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => {
+            abortController.abort();
+          }, narrativeTimeoutMs);
+          let firstChunk = true;
+          try {
+            const modelStream = await narrativeModel.stream([
+              new SystemMessage(
+                `${roleConfig.systemPrompt}
+
+${classAssistantRules}
+
+## داده‌های دریافتی از پایگاه داده (DATABASE FACTS)
+
+### اطلاعات کلاس:
+${JSON.stringify(dataContext, null, 2)}
+
+### جدول KPI کلاس (EXACT DATA - DO NOT MODIFY):
+${classKpiTable}
+
+${
+  classSubjectTable
+    ? `### جدول عملکرد درس‌ها و معلم مربوطه (EXACT DATA - DO NOT MODIFY):
+${classSubjectTable}
+`
+    : ""
+}
+
+${
+  classRecentActivitiesTable
+    ? `### جدول فعالیت‌های اخیر (EXACT DATA - DO NOT MODIFY):
+${classRecentActivitiesTable}
+`
+    : ""
+}
+
+## دستورالعمل پاسخ
+1. حداکثر 4 نکته کوتاه و اجرایی درباره وضعیت آموزشی کلاس
+2. فقط از اعداد و حقایق جدول‌ها استفاده کن
+3. هیچ عدد، تاریخ یا نتیجه‌گیری خارج از داده تولید نکن
+4. اگر داده‌ای ناکافی است، همان را شفاف بگو
+5. در تحلیل، برای هر درس اشاره کن که میانگین/تعداد فعالیت/معلم چه وضعیتی دارد`
+              ),
+              new HumanMessage(userQuestion),
+            ]);
+
+            for await (const chunk of modelStream) {
+              const content =
+                typeof chunk.content === "string"
+                  ? chunk.content
+                  : Array.isArray(chunk.content)
+                  ? chunk.content.join("")
+                  : "";
+              if (content) {
+                if (firstChunk) {
+                  markTiming("class_model_first_chunk_ms", modelStart);
+                  firstChunk = false;
+                }
+                controller.enqueue(encoder.encode(content));
+              }
+            }
+            markTiming("class_model_stream_ms", modelStart);
+            logStep("class_narrative_completed", {
+              duration_ms: timings.class_model_stream_ms,
+            });
+          } catch (error) {
+            console.error("Principal class AI streaming error:", error);
+            if ((error as Error)?.name === "AbortError") {
+              controller.enqueue(
+                encoder.encode(
+                  "\n\n(جمع‌بندی تکمیلی کلاس به دلیل محدودیت زمان تولید نشد.)"
+                )
+              );
+            } else {
+              controller.enqueue(
+                encoder.encode(
+                  "\n\n(در حال حاضر امکان تولید جمع‌بندی تکمیلی کلاس وجود ندارد.)"
+                )
+              );
+            }
+          } finally {
+            clearTimeout(timeoutId);
+            logTimings("class_stream_completed");
+            controller.close();
+          }
+        },
+      });
+
+      return new NextResponse(stream, { headers: responseHeaders });
+    } else if (userQuestion && isStudentLikeQuestion) {
       logStep("student_question_detected");
       const dbStart = performance.now();
       const functionCallStart = performance.now();

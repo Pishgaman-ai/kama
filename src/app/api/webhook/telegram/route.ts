@@ -55,6 +55,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    if (!user.school_id) {
+      await logUnknownTelegramInteraction(
+        chatId,
+        messageText,
+        `User ${user.id} has no school_id`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     console.log(`[Telegram Webhook] Identified user: ${user.name} (${user.role}) from school ${user.school_id}`);
 
     // 3. Get bot token for the user's school

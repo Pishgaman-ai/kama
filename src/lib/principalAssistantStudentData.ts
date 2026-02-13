@@ -24,6 +24,14 @@ export interface StudentSearchResult {
   classes: StudentClassInfo[];
 }
 
+export interface ClassSearchResult {
+  id: string;
+  name: string;
+  grade_level: string | null;
+  section: string | null;
+  academic_year: string | null;
+}
+
 export interface StudentIdentity {
   id: string;
   name: string;
@@ -96,6 +104,43 @@ export interface StudentSummary {
     qualitative_evaluation: string | null;
     subject: string | null;
     class_name: string | null;
+  }>;
+}
+
+export interface ClassPerformanceResult {
+  classInfo: {
+    id: string;
+    name: string;
+    grade_level: string | null;
+    section: string | null;
+    academic_year: string | null;
+  };
+  summary: {
+    student_count: number;
+    teacher_count: number;
+    activities_count: number;
+    average_activity_score: number | null;
+    average_grade_percent: number | null;
+    exams_count: number;
+    published_exams_count: number;
+    active_exams_count: number;
+    last_activity_date: string | null;
+  };
+  subject_summaries: Array<{
+    subject: string | null;
+    activity_count: number;
+    average_score: number | null;
+    students_covered: number;
+    teacher_name: string | null;
+  }>;
+  recent_activities: Array<{
+    activity_date: string | null;
+    activity_type: string;
+    activity_title: string;
+    subject_name: string | null;
+    average_score: number | null;
+    records_count: number;
+    students_count: number;
   }>;
 }
 
@@ -219,6 +264,81 @@ export async function searchStudentsForPrincipal(params: {
       name: row.name,
       grade_level: row.grade_level || "",
       classes: Array.isArray(row.classes) ? row.classes : [],
+    }));
+  });
+}
+
+export async function searchClassesForPrincipal(params: {
+  schoolId: string;
+  name: string;
+  gradeLevel?: string;
+  academicYear?: string;
+  limit?: number;
+}): Promise<ClassSearchResult[]> {
+  const { schoolId, name, gradeLevel, academicYear } = params;
+  const limit = normalizeLimit(params.limit);
+  const normalizedName = name
+    .replace(/\u200c/g, " ")
+    .replace(/[ي]/g, "ی")
+    .replace(/[ك]/g, "ک")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalizedName) return [];
+
+  return withReadOnlyClient(async (client) => {
+    const queryParams: Array<string | number> = [schoolId, `%${normalizedName}%`];
+    const conditions: string[] = [
+      "c.school_id = $1",
+      "(c.name ILIKE $2 OR CONCAT_WS(' ', c.name, c.section, c.grade_level) ILIKE $2)",
+    ];
+
+    if (gradeLevel) {
+      queryParams.push(gradeLevel);
+      conditions.push(`c.grade_level = $${queryParams.length}`);
+    }
+
+    if (academicYear) {
+      queryParams.push(academicYear);
+      conditions.push(`c.academic_year = $${queryParams.length}`);
+    }
+
+    const nameParts = normalizedName
+      .split(" ")
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 2);
+
+    for (const part of nameParts) {
+      queryParams.push(`%${part}%`);
+      conditions.push(
+        `(c.name ILIKE $${queryParams.length} OR CONCAT_WS(' ', c.name, c.section, c.grade_level) ILIKE $${queryParams.length})`
+      );
+    }
+
+    queryParams.push(limit);
+
+    const result = await client.query(
+      `
+      SELECT
+        c.id,
+        c.name,
+        c.grade_level,
+        c.section,
+        c.academic_year
+      FROM classes c
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY c.name
+      LIMIT $${queryParams.length}
+      `,
+      queryParams
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      grade_level: row.grade_level ?? null,
+      section: row.section ?? null,
+      academic_year: row.academic_year ?? null,
     }));
   });
 }
@@ -615,6 +735,213 @@ export async function getStudentActivitiesForPrincipal(params: {
           : null,
       },
       subject_summaries: subjectSummaries,
+    };
+  });
+}
+
+export async function getClassPerformanceForPrincipal(params: {
+  schoolId: string;
+  classId: string;
+  recentLimit?: number;
+}): Promise<ClassPerformanceResult | null> {
+  const { schoolId, classId } = params;
+  const recentLimit = Math.max(5, Math.min(30, Math.floor(params.recentLimit || 10)));
+
+  return withReadOnlyClient(async (client) => {
+    const classResult = await client.query(
+      `
+      SELECT id, name, grade_level, section, academic_year
+      FROM classes
+      WHERE id = $1 AND school_id = $2
+      LIMIT 1
+      `,
+      [classId, schoolId]
+    );
+
+    if (classResult.rows.length === 0) {
+      return null;
+    }
+
+    const classInfo = classResult.rows[0];
+
+    const [membersResult, activitiesSummaryResult, gradesSummaryResult, examsSummaryResult, subjectSummaryResult, recentActivitiesResult] =
+      await Promise.all([
+        client.query(
+          `
+          SELECT
+            COUNT(DISTINCT cm.user_id) FILTER (WHERE cm.role = 'student') AS student_count,
+            COUNT(DISTINCT cm.user_id) FILTER (WHERE cm.role = 'teacher') AS teacher_count
+          FROM class_memberships cm
+          WHERE cm.class_id = $1
+          `,
+          [classId]
+        ),
+        client.query(
+          `
+          SELECT
+            COUNT(*) AS activities_count,
+            AVG(ea.quantitative_score) FILTER (WHERE ea.quantitative_score IS NOT NULL) AS average_activity_score,
+            MAX(ea.activity_date) AS last_activity_date
+          FROM educational_activities ea
+          JOIN classes c ON c.id = ea.class_id
+          WHERE ea.class_id = $1 AND c.school_id = $2
+          `,
+          [classId, schoolId]
+        ),
+        client.query(
+          `
+          SELECT
+            AVG(COALESCE(cg.percentage, (cg.grade_value / NULLIF(cg.max_score, 0)) * 100)) AS average_grade_percent
+          FROM class_grades cg
+          JOIN classes c ON c.id = cg.class_id
+          WHERE cg.class_id = $1 AND c.school_id = $2
+          `,
+          [classId, schoolId]
+        ),
+        client.query(
+          `
+          SELECT
+            COUNT(*) AS exams_count,
+            COUNT(*) FILTER (WHERE e.status = 'published') AS published_exams_count,
+            COUNT(*) FILTER (WHERE e.status = 'active') AS active_exams_count
+          FROM exams e
+          JOIN classes c ON c.id = e.class_id
+          WHERE e.class_id = $1 AND c.school_id = $2
+          `,
+          [classId, schoolId]
+        ),
+        client.query(
+          `
+          WITH subject_base AS (
+            SELECT
+              l.title AS subject,
+              COUNT(*) AS activity_count,
+              AVG(ea.quantitative_score) FILTER (WHERE ea.quantitative_score IS NOT NULL) AS average_score,
+              COUNT(DISTINCT ea.student_id) AS students_covered
+            FROM educational_activities ea
+            LEFT JOIN lessons l ON ea.subject_id = l.id
+            JOIN classes c ON c.id = ea.class_id
+            WHERE ea.class_id = $1 AND c.school_id = $2
+            GROUP BY l.title
+          ),
+          subject_teacher_ranked AS (
+            SELECT
+              l.title AS subject,
+              u.name AS teacher_name,
+              ROW_NUMBER() OVER (
+                PARTITION BY l.title
+                ORDER BY COUNT(*) DESC, MAX(ea.activity_date) DESC NULLS LAST
+              ) AS rn
+            FROM educational_activities ea
+            LEFT JOIN lessons l ON ea.subject_id = l.id
+            LEFT JOIN users u ON u.id = ea.teacher_id
+            JOIN classes c ON c.id = ea.class_id
+            WHERE ea.class_id = $1
+              AND c.school_id = $2
+              AND u.role = 'teacher'
+            GROUP BY l.title, u.name
+          )
+          SELECT
+            sb.subject,
+            sb.activity_count,
+            sb.average_score,
+            sb.students_covered,
+            str.teacher_name
+          FROM subject_base sb
+          LEFT JOIN subject_teacher_ranked str
+            ON str.rn = 1
+            AND str.subject IS NOT DISTINCT FROM sb.subject
+          ORDER BY sb.activity_count DESC
+          LIMIT 10
+          `,
+          [classId, schoolId]
+        ),
+        client.query(
+          `
+          SELECT
+            ea.activity_date,
+            ea.activity_type,
+            ea.activity_title,
+            l.title AS subject_name,
+            AVG(ea.quantitative_score) FILTER (WHERE ea.quantitative_score IS NOT NULL) AS average_score,
+            COUNT(*) AS records_count,
+            COUNT(DISTINCT ea.student_id) AS students_count
+          FROM educational_activities ea
+          LEFT JOIN lessons l ON ea.subject_id = l.id
+          JOIN classes c ON c.id = ea.class_id
+          WHERE ea.class_id = $1 AND c.school_id = $2
+          GROUP BY ea.activity_date, ea.activity_type, ea.activity_title, l.title
+          ORDER BY ea.activity_date DESC NULLS LAST
+          LIMIT $3
+          `,
+          [classId, schoolId, recentLimit]
+        ),
+      ]);
+
+    return {
+      classInfo: {
+        id: classInfo.id,
+        name: classInfo.name,
+        grade_level: classInfo.grade_level ?? null,
+        section: classInfo.section ?? null,
+        academic_year: classInfo.academic_year ?? null,
+      },
+      summary: {
+        student_count: parseInt(membersResult.rows[0]?.student_count || "0", 10),
+        teacher_count: parseInt(membersResult.rows[0]?.teacher_count || "0", 10),
+        activities_count: parseInt(
+          activitiesSummaryResult.rows[0]?.activities_count || "0",
+          10
+        ),
+        average_activity_score:
+          activitiesSummaryResult.rows[0]?.average_activity_score === null ||
+          activitiesSummaryResult.rows[0]?.average_activity_score === undefined
+            ? null
+            : Number(activitiesSummaryResult.rows[0].average_activity_score),
+        average_grade_percent:
+          gradesSummaryResult.rows[0]?.average_grade_percent === null ||
+          gradesSummaryResult.rows[0]?.average_grade_percent === undefined
+            ? null
+            : Number(gradesSummaryResult.rows[0].average_grade_percent),
+        exams_count: parseInt(examsSummaryResult.rows[0]?.exams_count || "0", 10),
+        published_exams_count: parseInt(
+          examsSummaryResult.rows[0]?.published_exams_count || "0",
+          10
+        ),
+        active_exams_count: parseInt(
+          examsSummaryResult.rows[0]?.active_exams_count || "0",
+          10
+        ),
+        last_activity_date: activitiesSummaryResult.rows[0]?.last_activity_date
+          ? new Date(activitiesSummaryResult.rows[0].last_activity_date)
+              .toISOString()
+              .split("T")[0]
+          : null,
+      },
+      subject_summaries: subjectSummaryResult.rows.map((row) => ({
+        subject: row.subject ?? null,
+        activity_count: parseInt(row.activity_count || "0", 10),
+        average_score:
+          row.average_score === null || row.average_score === undefined
+            ? null
+            : Number(row.average_score),
+        students_covered: parseInt(row.students_covered || "0", 10),
+        teacher_name: row.teacher_name ?? null,
+      })),
+      recent_activities: recentActivitiesResult.rows.map((row) => ({
+        activity_date: row.activity_date
+          ? new Date(row.activity_date).toISOString().split("T")[0]
+          : null,
+        activity_type: row.activity_type,
+        activity_title: row.activity_title,
+        subject_name: row.subject_name ?? null,
+        average_score:
+          row.average_score === null || row.average_score === undefined
+            ? null
+            : Number(row.average_score),
+        records_count: parseInt(row.records_count || "0", 10),
+        students_count: parseInt(row.students_count || "0", 10),
+      })),
     };
   });
 }

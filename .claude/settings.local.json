@@ -34,7 +34,10 @@
       "Bash(gh repo create:*)",
       "WebFetch(domain:localhost)",
       "Bash(tree:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run lint)",
+      "Bash(__NEW_LINE_fed46ef810aace14__ echo \"=== Checking all created Telegram files ===\")"
     ],
     "deny": [],
     "ask": []

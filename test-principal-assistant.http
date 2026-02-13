@@ -1,0 +1,45 @@
+### Test Principal AI Assistant - Student Question
+POST https://c6c6-86-106-158-103.ngrok-free.app/api/principal/ai-assistant
+Content-Type: application/json
+Cookie: user_session=YOUR_SESSION_COOKIE_HERE
+
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "وضعیت علی احمدی در ریاضی چطور است?"
+    }
+  ]
+}
+
+###
+
+### Test Principal AI Assistant - Class Question
+POST https://c6c6-86-106-158-103.ngrok-free.app/api/principal/ai-assistant
+Content-Type: application/json
+Cookie: user_session=YOUR_SESSION_COOKIE_HERE
+
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "عملکرد کلاس نهم الف چطور است؟"
+    }
+  ]
+}
+
+###
+
+### Test Principal AI Assistant - General Question
+POST https://c6c6-86-106-158-103.ngrok-free.app/api/principal/ai-assistant
+Content-Type: application/json
+Cookie: user_session=YOUR_SESSION_COOKIE_HERE
+
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "سلام، می‌تونی کمک کنی؟"
+    }
+  ]
+}
