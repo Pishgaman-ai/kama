@@ -20,7 +20,7 @@ async function testOpenRouterAPI() {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': 'http://localhost:3000',
-        'X-Title': 'Kamma Education Platform - Test',
+        'X-Title': 'Kama Education Platform - Test',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

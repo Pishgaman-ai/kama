@@ -1,4 +1,4 @@
-# ساختار پروژه EduHelper (kamma_module_v3)
+# ساختار پروژه EduHelper (Kama_module_v3)
 
 ## خلاصه فنی
 - نام پکیج: `eduhelper` (بر اساس `package.json`)

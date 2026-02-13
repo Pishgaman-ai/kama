@@ -112,7 +112,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```bash
 # 1. کلون کردن پروژه
 git clone <repository-url>
-cd kamma_module_v2
+cd Kama_module_v2
 
 # 2. نصب dependencies
 npm install

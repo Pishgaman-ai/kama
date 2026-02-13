@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
           headers: {
             "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
             "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "Kamma Education Platform",
+            "X-Title": "Kama Education Platform",
             "Content-Type": "application/json",
             "Connection": "keep-alive",
           },
