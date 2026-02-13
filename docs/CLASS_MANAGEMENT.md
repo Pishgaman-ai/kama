@@ -230,7 +230,7 @@ Retrieves all subjects for the school.
 ## File Structure
 
 ```
-eduhelper/
+kama/
 ├── src/app/
 │   ├── dashboard/principal/
 │   │   ├── classes/

@@ -139,7 +139,7 @@ git commit -m "Add Bale Bot integration"
 git push
 
 # 2. Run database migration
-psql -d eduhelper -f database/migrations/add_bale_chat_id_index.sql
+psql -d kama -f database/migrations/add_bale_chat_id_index.sql
 
 # 3. Verify webhook
 curl https://yourdomain.com/api/webhook/bale
@@ -251,7 +251,7 @@ curl https://yourdomain.com/api/webhook/bale
 curl "https://tapi.bale.ai/bot{TOKEN}/getWebhookInfo"
 
 # Can database be queried?
-psql -d eduhelper -c "SELECT COUNT(*) FROM users"
+psql -d kama -c "SELECT COUNT(*) FROM users"
 ```
 
 ### Common Issues

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-EduHelper is a comprehensive educational management system built with Next.js 16, React 19, and PostgreSQL. It provides role-based dashboards for administrators, principals, teachers, students, and parents, with deep AI integration for intelligent features like automated grading, student assessment, and educational assistance.
+kama is a comprehensive educational management system built with Next.js 16, React 19, and PostgreSQL. It provides role-based dashboards for administrators, principals, teachers, students, and parents, with deep AI integration for intelligent features like automated grading, student assessment, and educational assistance.
 
 ## Development Commands
 

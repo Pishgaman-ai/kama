@@ -16,7 +16,7 @@ Next: Deploy these files to your server
 
 ```bash
 # Verify indexes exist
-psql -d eduhelper -c "\di idx_users_profile_telegram*"
+psql -d kama -c "\di idx_users_profile_telegram*"
 # Should see idx_users_profile_telegram_chat_id (GIN index)
 ```
 

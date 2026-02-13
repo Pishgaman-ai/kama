@@ -120,7 +120,7 @@ CREATE INDEX IF NOT EXISTS idx_users_profile_telegram_chat_id
 
 Verify indexes exist:
 ```bash
-psql -d eduhelper -c "\di idx_users_profile*"
+psql -d kama -c "\di idx_users_profile*"
 ```
 
 ### 2. UI Configuration (Already Complete)
@@ -160,7 +160,7 @@ curl "https://api.telegram.org/bot{BOT_TOKEN}/getWebhookInfo"
 ### 4. User Configuration
 
 **For Principals** (in Settings):
-1. Principal logs into EduHelper
+1. Principal logs into kama
 2. Goes to Settings → Profile
 3. Enters Telegram credentials:
    - `telegram_api_key` (bot token from BotFather)

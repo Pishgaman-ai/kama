@@ -1,6 +1,6 @@
 # AI Service Integration
 
-This document explains how to use the AI service integration for the EduHelper application.
+This document explains how to use the AI service integration for the kama application.
 
 ## Overview
 

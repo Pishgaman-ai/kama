@@ -3,7 +3,7 @@
 
 ## 1. Purpose
 This document defines the **single source of truth** for implementing the
-**Principal (School Manager) Analytical Dashboard** in EduHelper.
+**Principal (School Manager) Analytical Dashboard** in kama.
 
 All implementations (UI, API, DB queries, charts) MUST follow this document.
 When changes are required, this document must be updated first.
@@ -228,7 +228,7 @@ Each item must be clickable → filtered view or admin tool.
 
 ## 10. Status
 - Version: v1.0
-- Owner: EduHelper Core Team
+- Owner: kama Core Team
 - Last Updated: YYYY-MM-DD
 
 ## 11. Persian & RTL Considerations (Mandatory)

@@ -1,7 +1,7 @@
-# ساختار پروژه EduHelper (Kama_module_v3)
+# ساختار پروژه kama (Kama_module_v3)
 
 ## خلاصه فنی
-- نام پکیج: `eduhelper` (بر اساس `package.json`)
+- نام پکیج: `kama` (بر اساس `package.json`)
 - فریمورک: Next.js 16.1.1 (App Router) + React 19 + TypeScript
 - UI: Tailwind CSS، framer-motion، recharts، leaflet
 - پایگاه داده: PostgreSQL با `pg`

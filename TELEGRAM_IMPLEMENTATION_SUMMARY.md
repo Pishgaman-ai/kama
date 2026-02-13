@@ -251,7 +251,7 @@ curl https://yourdomain.com/api/webhook/telegram
 curl "https://api.telegram.org/bot{TOKEN}/getWebhookInfo"
 
 # Can database be queried?
-psql -d eduhelper -c "SELECT COUNT(*) FROM users"
+psql -d kama -c "SELECT COUNT(*) FROM users"
 ```
 
 ### Common Issues

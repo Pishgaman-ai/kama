@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document explains how to use the AI chat feature that has been implemented for administrators, principals, teachers, and parents in the EduHelper system.
+This document explains how to use the AI chat feature that has been implemented for administrators, principals, teachers, and parents in the kama system.
 
 ## Features
 

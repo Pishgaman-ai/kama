@@ -214,7 +214,7 @@ CREATE TABLE subjects (
 ## File Structure
 
 ```
-eduhelper/
+kama/
 ├── src/app/
 │   ├── dashboard/principal/
 │   │   ├── subjects/

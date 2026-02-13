@@ -1,6 +1,6 @@
 # AI Grading Service Integration Guide
 
-This document provides detailed instructions for the AI backend service on how to process grading requests and store results in the EduHelper database.
+This document provides detailed instructions for the AI backend service on how to process grading requests and store results in the kama database.
 
 ## Request Format
 
@@ -30,7 +30,7 @@ The AI grading service receives HTTP POST requests with the following JSON paylo
 
 ## Database Schema
 
-The EduHelper database contains the following relevant tables for AI grading:
+The kama database contains the following relevant tables for AI grading:
 
 ### `educational_activities` Table
 

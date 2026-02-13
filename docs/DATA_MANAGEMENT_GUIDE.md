@@ -2,7 +2,7 @@
 
 ## Overview
 
-A comprehensive data management tool has been implemented to clear all data from the EduHelper project tables while preserving the table structures. This tool is designed to help you start fresh with clean tables.
+A comprehensive data management tool has been implemented to clear all data from the kama project tables while preserving the table structures. This tool is designed to help you start fresh with clean tables.
 
 ## What's Been Created
 
@@ -31,7 +31,7 @@ A comprehensive data management tool has been implemented to clear all data from
 
 ## Tables That Will Be Cleared
 
-The following 15 tables belong to the EduHelper project and will have their data cleared:
+The following 15 tables belong to the kama project and will have their data cleared:
 
 1. **otp_tokens** - توکن‌های OTP
 2. **password_reset_tokens** - توکن‌های بازنشانی رمز عبور
@@ -110,7 +110,7 @@ curl -X POST http://localhost:3002/api/clear-data -H "Content-Type: application/
 - **Irreversible Operation**: Once data is cleared, it cannot be recovered unless you have backups
 - **Table Structure Preserved**: Only data is removed, table definitions remain intact
 - **Foreign Key Safe**: Deletes in proper order to respect database constraints
-- **Other Tables Protected**: Only affects EduHelper project tables, other database tables are untouched
+- **Other Tables Protected**: Only affects kama project tables, other database tables are untouched
 
 ## Example Usage Flow
 

@@ -1,4 +1,4 @@
-# EduHelper
+# kama
 
 All project documentation has been organized under the `docs/` folder.
 

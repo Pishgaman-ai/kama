@@ -1,7 +1,7 @@
 # AI Service Implementation Summary
 
 ## Overview
-This document summarizes the implementation of the AI service integration for the EduHelper application based on the requirements in [ai_com.md](file:///d:/PishGamanAI/Main-Project/EduHepler/MVP-project/ai_com.md).
+This document summarizes the implementation of the AI service integration for the kama application based on the requirements in [ai_com.md](file:///d:/PishGamanAI/Main-Project/EduHepler/MVP-project/ai_com.md).
 
 ## Implementation Details
 

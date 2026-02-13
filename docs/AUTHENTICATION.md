@@ -375,4 +375,4 @@ For issues or questions:
 
 ## License
 
-This authentication system is part of the EduHelper MVP project.
+This authentication system is part of the kama MVP project.

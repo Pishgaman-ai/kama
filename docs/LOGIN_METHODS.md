@@ -2,7 +2,7 @@
 
 ## Overview
 
-The EduHelper system supports **three different login methods** based on user roles:
+The kama system supports **three different login methods** based on user roles:
 
 ---
 

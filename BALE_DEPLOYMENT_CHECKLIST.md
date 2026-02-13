@@ -15,10 +15,10 @@ Next: Deploy these files to your server
 ### ✅ Step 2: Database Migration
 ```bash
 # Connect to PostgreSQL and run migration
-psql -d eduhelper -f database/migrations/add_bale_chat_id_index.sql
+psql -d kama -f database/migrations/add_bale_chat_id_index.sql
 
 # Verify indexes created
-psql -d eduhelper -c "\di idx_users_profile*"
+psql -d kama -c "\di idx_users_profile*"
 # Should see 3 indexes created
 ```
 
@@ -126,13 +126,13 @@ tail -f /var/log/app.log | grep Bale
 ### Database Migration Failed
 ```bash
 # Verify tables exist
-psql -d eduhelper -c "\dt users"
+psql -d kama -c "\dt users"
 
 # Check current indexes
-psql -d eduhelper -c "\di"
+psql -d kama -c "\di"
 
 # Try migration again
-psql -d eduhelper -f database/migrations/add_bale_chat_id_index.sql
+psql -d kama -f database/migrations/add_bale_chat_id_index.sql
 ```
 
 ### Messages Not Working

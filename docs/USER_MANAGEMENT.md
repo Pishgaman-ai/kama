@@ -2,7 +2,7 @@
 
 ## Overview
 
-The user management system allows administrators to manage all users across different schools in the EduHelper platform. Admins can view, create, edit, and delete users, as well as reset passwords.
+The user management system allows administrators to manage all users across different schools in the kama platform. Admins can view, create, edit, and delete users, as well as reset passwords.
 
 ## Features
 

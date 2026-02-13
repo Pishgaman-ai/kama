@@ -2,7 +2,7 @@
 
 ## Overview
 
-The user management system has been successfully implemented to allow administrators to manage all users across different schools in the EduHelper platform. This system provides comprehensive functionality for viewing, creating, editing, and deleting users, as well as managing passwords.
+The user management system has been successfully implemented to allow administrators to manage all users across different schools in the kama platform. This system provides comprehensive functionality for viewing, creating, editing, and deleting users, as well as managing passwords.
 
 ## Key Features Implemented
 

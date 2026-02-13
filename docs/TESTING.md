@@ -273,7 +273,7 @@ Expected Response:
 # Test Kavenegar API directly
 curl "https://api.kavenegar.com/v1/YOUR_API_KEY/sms/send.json" \
   -d "receptor=09123456789" \
-  -d "message=Test message from EduHelper" \
+  -d "message=Test message from kama" \
   -d "sender=10008663"
 ```
 

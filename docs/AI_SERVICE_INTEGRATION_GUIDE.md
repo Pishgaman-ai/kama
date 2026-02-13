@@ -1,6 +1,6 @@
 # AI Service Integration Guide
 
-This document provides guidelines for the AI backend service to integrate with the EduHelper platform, specifically for processing educational activities.
+This document provides guidelines for the AI backend service to integrate with the kama platform, specifically for processing educational activities.
 
 ## Overview
 
@@ -188,4 +188,4 @@ The AI service should:
    d. Insert detailed results into `ai_question_results`
    e. Set activity status to `Completed`
 
-This approach ensures that all AI processing results are properly stored and can be retrieved by teachers through the EduHelper platform.
+This approach ensures that all AI processing results are properly stored and can be retrieved by teachers through the kama platform.

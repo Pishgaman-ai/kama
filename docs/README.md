@@ -1,6 +1,6 @@
-# EduHelper Documentation - مستندات سیستم آموزشی
+# kama Documentation - مستندات سیستم آموزشی
 
-مستندات کامل سیستم مدیریت آموزشی EduHelper
+مستندات کامل سیستم مدیریت آموزشی kama
 
 ---
 

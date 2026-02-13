@@ -1,6 +1,6 @@
-# EduHelper Database Structure Documentation
+# kama Database Structure Documentation
 
-This document provides a comprehensive overview of the EduHelper database structure, including all tables, relationships, and key implementation details.
+This document provides a comprehensive overview of the kama database structure, including all tables, relationships, and key implementation details.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ This document provides a comprehensive overview of the EduHelper database struct
 
 ## Overview
 
-The EduHelper database is built on PostgreSQL and follows a normalized structure to support a comprehensive educational management system. The schema includes entities for schools, users (students, teachers, parents, principals, admins), classes, subjects, assessments, grades, and various reporting features.
+The kama database is built on PostgreSQL and follows a normalized structure to support a comprehensive educational management system. The schema includes entities for schools, users (students, teachers, parents, principals, admins), classes, subjects, assessments, grades, and various reporting features.
 
 ## Core Tables
 

@@ -114,12 +114,12 @@ Creates indexes for performance:
 Run the migration to create performance indexes:
 
 ```bash
-psql -d eduhelper -f database/migrations/add_bale_chat_id_index.sql
+psql -d kama -f database/migrations/add_bale_chat_id_index.sql
 ```
 
 Verify indexes were created:
 ```bash
-psql -d eduhelper -c "\di idx_users_profile*"
+psql -d kama -c "\di idx_users_profile*"
 ```
 
 ### 2. Webhook Registration
